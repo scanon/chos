@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# Helper script to build an rpm
+#
+
+# Version
+VERSION=0.06
+
+# Variables
+#
+TMPDIR=/tmp/$$
+SDIR=$TMPDIR/chos-${VERSION}
+TARFILE=chos-${VERSION}.tgz
+
+mkdir $TMPDIR
+mkdir $SDIR
+cp -av . $SDIR
+cd $TMPDIR
+# Hack to work around template issue
+touch $SDIR/config.h.top
+tar czf $TMPDIR/${TARFILE} chos-${VERSION}
+
+# Make RPM build space
+#
+mkdir $TMPDIR/rpmbuild
+mkdir $TMPDIR/rpmbuild/SPECS
+mkdir $TMPDIR/rpmbuild/SOURCES
+mkdir $TMPDIR/rpmbuild/BUILD
+mkdir $TMPDIR/rpmbuild/RPMS
+mkdir $TMPDIR/rpmbuild/SRPMS
+
+# Build RPM
+rpmbuild --define "_topdir $TMPDIR/rpmbuild" -ta $TARFILE
+
+# Move RPM to /tmp
+mv $TMPDIR/rpmbuild/RPMS/`uname -i`/*rpm /tmp
+
+# remove scratch space
+#
+rm -rf $TMPDIR
