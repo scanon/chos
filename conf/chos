@@ -1,0 +1,15 @@
+#
+# List valid trees below.  The format should be...
+# <alias>:<path>
+#
+# The alias can be anything including a full path.  It will
+# get converted to the associated path.  For example,
+#
+# %SHELLS
+# rh73:/auto/redhat73
+# /auto/redhat73:/auto/redhat73
+#
+%SHELLS
+local:/local/root
+
+%ENV

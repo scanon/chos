@@ -3,11 +3,11 @@
  * Lawrence Berkeley National Laboratory (subject to receipt of any
  * required approvals from the U.S. Dept. of Energy).  All rights
  * reserved.
- * 
+ *
  * If you have questions about your rights to use or distribute this
  * software, please contact Berkeley Lab's Technology Transfer
  * Department at  TTD@lbl.gov referring to "CHOS (LBNL Ref CR-2025)"
- * 
+ *
  * NOTICE.  This software was developed under funding from the U.S.
  * Department of Energy.  As such, the U.S. Government has been granted
  * for itself and others acting on its behalf a paid-up, nonexclusive,
@@ -21,13 +21,53 @@
  * reproduce, prepare derivative works, distribute copies to the public,
  * perform publicly and display publicly, and to permit others to do so.
  *
+ *
+ * Description:
+ *
+ * This is the main config file.  Please adjust this for your site.
  */
 
 
-#define SETCHOS "/proc/chos/setchos"
-#define RESETCHOS "/proc/chos/resetchos"
-#define LINKCHOS "/proc/chos/link"
+/*
+ * If chos is run without any args, it will re-initialize the environment.
+ * This option controls the default path.
+ */
+
+#define DEFPATH "PATH=/bin:/usr/bin:/usr/local/bin";
+
+/*
+ * This option sets the base directory for the chos tree.
+ * Note, if you change this you may need to adjust some other scripts.
+ */
+
+#define CHROOT "/chos"
+
+/*
+ * This file primarily controls what environment variables get carried over
+ * to the new tree for a login session.  If a command is specified, the
+ * environment stays intact.
+ */
+#define CHOSENV "/etc/chos.conf"
+
+/*
+ * This file specifies valid chos trees.  The format is...
+ *
+ * %SHELLS
+ * <alias1>:<path1>
+ * <alias2>:<path1>
+ * <alias3>:<path2>
+ * etc
+ *
+ * When a user sets CHOS or set .chos it is compared against the first
+ * element.  If they match, the path specified in the second element is used.
+ */
+#define CHOSCONF "/etc/chos"
+
+/*
+ * This tag should be before the valid chos tree in the /etc/chos file.
+ */
+
+#define SHELLHEAD "%SHELLS"
 
 #define ENVHEAD "%ENV"
 
-#define MAX_OS 80

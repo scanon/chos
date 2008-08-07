@@ -1,0 +1,221 @@
+INSTALL
+
+Version 1.0
+
+Contents
+--------
+1 Quick Start
+2 Detailed Instructions
+3 Testing
+4 Additional Integration
+5 Trouble Shooting
+6 Security
+7 Known Issues
+
+
+1 Quick Start
+--------------
+
+* Install DKMS
+* Install chos rpm
+* Confirm that the module is built and loaded
+* Create an OS tree and place it in an accessible location
+* Start up the additional automounter(s) for the /chos tree
+* Modify /etc/chos and chos.conf in the OS tree
+* Attempt to chos into the OS tree
+* Modify pam configuration to automatically perform chos on login
+
+
+2 Detailed Instructions
+------------------------
+
+2.1 DKMS
+--------
+Download the latest dkms from....
+
+http://linux.dell.com/dkms/
+
+and install it.  This provides an easy mechanism
+to rebuild the module.  You will need the kernel
+source tree (or kernel-source rpm) to build the
+kernel module.
+
+2.2 Install CHOS rpm
+--------------------
+
+Install the chos rpm.  It will attempt to build
+the module on installation.  Confirm that the module
+built.  If it fails, make sure that you have the
+kernel source tree for the running kernel.  If the
+module isn't already loaded, try loading it and do an
+lsmod to confirm that it loaded.
+
+
+2.3 Create an alternate OS tree
+-------------------------------
+
+This can be done in a variety of ways.  Here are a few...
+
+* Install the OS on a test node and copy the installation
+  to another directory.
+
+* Use rpm and --root directive to bootstrap a system
+
+* Use yum and --installroot to bootstrap a system
+
+Yum can be downloaded from http://linux.duke.edu/projects/yum/.
+You will need a version newer than 2.0 to get the --installroot
+option.
+
+Ideally, the tree would be installed on a exported file system,
+so that all the nodes in a cluster can use the same tree.
+
+Be sure to configure typical site dependent configuration options,
+such as the mail configuration and DNS servers.  In addition,
+some files will need to be linked to the local copy for the
+tree to fully function.  For example, /etc/mtab should be
+linked to /local/root/etc/mtab.  A list will be appended
+to this file.  Also, files such as passwd and group may need
+to be properly maintained depending on whether other name
+services are used (NIS, LDAP, etc).
+
+2.4 Start additional automounters
+---------------------------------
+
+The chroot tree needs accessible copies of special file systems
+(like /proc) in order for some utilities to work (like ps).
+Also, local scratch and temporary file systems need to be
+visible under the chroot tree.  These could be statically
+mounted or you can run an additional automounter for these
+file systems.  During the installation of the chos RPM, an
+automounter map will be created for your local mounts.  This
+is written to /etc/auto.local.  To start the automounter,
+do the following...
+
+echo "/chos/local   /etc/auto.local" >> /etc/auto.master
+/etc/init.d/autofs reload
+
+If you already run an automounter for file systems accessed via
+NFS, you will need to run an additional automounter for this.  For
+example, if you access automounted NFS directories via /auto using
+a map called auto.projects, do the following...
+
+(optional example)
+echo "/chos/auto  auto.projects" >> /etc/auto.master
+/etc/init.d/autofs reload
+
+2.5 Modify and install chos configuration files
+-----------------------------------------------
+
+Modify /etc/chos to include the OS trees you installed earlier.
+The trees are specified after the key phrase "%SHELLS".  The
+format is <alias>:<path>.  For example, it might be os1:/auto/os1.
+The user will set the CHOS environment variable or edit their
+.chos file to select the OS.  The alias can be an arbitrary
+string.  The path should point directly to the base of the
+OS tree.  It cannot pass through a directory that links
+through /proc/chos/link (see the README for more details).
+Pointing to an automounted link (i.e. /auto/redhat73) or
+a directory on the /local mount (i.e. /local/root/os/redhat73)
+should work.
+
+Copy the sample /etc/chos.conf file into the /etc directory
+of each of the OS trees.  This file is read after the chroot,
+so most reside in the OS tree.
+
+3 Testing
+---------
+
+Now for the big moment.  Set your chos to a valid alias and
+try running the chos command.
+
+user@host> export CHOS rh73
+user@host> chos
+...Login stuff
+user@host> cat /etc/redhat-release
+Red Hat Linux release 7.3 (Valhalla)
+
+If this fails, read the Trouble Shooting section.
+
+4 Additional Integration
+
+4.1 PAM module
+----------
+
+In order for users to automatically be switched to there
+preferred environment on login, a PAM module is provided.
+To use this, add the following line to the end of your
+/etc/pam.d/sshd configuration file.  
+
+session optional        /lib/security/pam_chos.so
+
+If you allow other remote services (rsh, rlogin, telnet), be 
+sure to add it those as well.
+
+
+4.2 Integration with batch systems
+------------------------------
+
+For CHOS to be fully transparent to the users, it must be integrated into the
+batch system.  For many batch systems this is actually quite simple.  Under SGE
+and LSF create a custom job starter.  This job starter can check the CHOS
+environment variable and, if set, run the chos command as part of the exec
+call.  An example job starter can be found in the utils directoy.
+
+5 Trouble Shooting
+----------------
+
+Diagnosing problems with CHOS can be confusing.  The various pieces all need to
+function and this can make it difficult to isolate the problem.  A check script
+can be found in the test directory.  It test the following...
+
+* Is the module loaded
+* Are the extra automounters running
+* Checks the presence of the configuration files
+* Tests the install tree based on the CHOS variable
+ 
+6 Security
+--------
+
+Adding additional OS trees can create additional security problems.  Here are
+a few suggestions on how to reduce these risks.
+
+* Disable or remove set uid programs.  If these are need by the users, try linking
+  to the local installation (/local/root/...).
+* Mount all installation trees as nosuid.
+* Maintain strict control over the /etc directory of other OS trees.
+* Avoid running root services out of the alternate OS trees.  Run services out
+  of the base tree.
+
+If these suggestions are followed, the biggest risks should be potential
+user compromises from bugs such as temp file race conditions.  While this
+is still a concern, it is less dangerous than escalated privileges.  If an OS
+has serious vulnerabilities, it can be disabled by removing it from the /etc/chos 
+file.
+
+7 Known Issues
+------------
+
+Here are some known problems and issues.
+
+* at and cron jobs won't automatically run in the user's preferred chos tree.  We are
+  exploring ways to fix this.  There is a pam enabled crond.  Running this version of crond
+  with the pam_chos module configured, would solve the problem for cron.  Users can always
+  manually run the chos command as part of their cron job.
+
+* qsh and qrsh (SGE) don't automatically switch.  We are exploring ways to fix this.
+
+* Trying to switch to /local/root under SuSE 9.1 doesn't work
+
+* Running chos from /local/root under a different OS may not work.  We need a better
+  mechanism.  We could get rid of calling chroot and have everything handled in the
+  kernel module.
+
+Appendix
+--------
+
+A.1 Special files
+-----------------
+Just one file at this time, but there are likely others.
+
+/etc/mtab -> /local/root/etc/mtab

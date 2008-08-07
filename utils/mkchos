@@ -1,7 +1,41 @@
 #!/bin/sh
+#
+#
+# CHOS (c) 2004, The Regents of the University of California, through
+# Lawrence Berkeley National Laboratory (subject to receipt of any
+# required approvals from the U.S. Dept. of Energy).  All rights
+# reserved.
+#
+# If you have questions about your rights to use or distribute this
+# software, please contact Berkeley Lab's Technology Transfer
+# Department at  TTD@lbl.gov referring to "CHOS (LBNL Ref CR-2025)"
+#
+# NOTICE.  This software was developed under funding from the U.S.
+# Department of Energy.  As such, the U.S. Government has been granted
+# for itself and others acting on its behalf a paid-up, nonexclusive,
+# irrevocable, worldwide license in the Software to reproduce, prepare
+# derivative works, and perform publicly and display publicly.
+# Beginning five (5) years after the date permission to assert
+# copyright is obtained from the U.S. Department of Energy, and subject
+# to any subsequent five (5) year renewals, the U.S. Government is
+# granted for itself and others acting on its behalf a paid-up,
+# nonexclusive, irrevocable, worldwide license in the Software to
+# reproduce, prepare derivative works, distribute copies to the public,
+# perform publicly and display publicly, and to permit others to do so.
+#
+#
+# Description:
+#
+# Helper script called during the rpmbuild.  This
+# creates the framework directory.
+#
 
-BASE="/chos"
-MAP="/etc/auto.local"
+if [ $# -lt 1 ] ; then
+  echo "Specify base"
+  exit
+fi
+
+BASE=$1
 LOCAL=$BASE/local
 MOUNT=/proc/chos/link/
 
@@ -12,13 +46,12 @@ mkdir $BASE/export
 mkdir $BASE/local
 
 echo "Creating links"
-for dir in "bin" "dev" "etc" "extra" "home" "initrd" "lib" "opt" "sbin" "tmp" "u" "usr" "var"
+for dir in "bin" "dev" "etc" "extra" "home" "initrd" "lib" "opt" "sbin" "u" "usr" "var"
 do
+if [ -e $BASE/$dir ] ; then
 rm $BASE/$dir
-ln -sf $MOUNT/$dir $BASE/$dir
+fi
+ln -sf $MOUNT/$dir $BASE/$dir > /dev/null 2>&1
 done
-mkdir $BASE/afs
-#rm $BASE/afs
-#ln -sf ./auto/afs5 $BASE/afs
 
-
+ln -sf local/proc $BASE/proc

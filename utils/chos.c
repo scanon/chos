@@ -1,3 +1,28 @@
+/*
+ * CHOS (c) 2004, The Regents of the University of California, through
+ * Lawrence Berkeley National Laboratory (subject to receipt of any
+ * required approvals from the U.S. Dept. of Energy).  All rights
+ * reserved.
+ *
+ * If you have questions about your rights to use or distribute this
+ * software, please contact Berkeley Lab's Technology Transfer
+ * Department at  TTD@lbl.gov referring to "CHOS (LBNL Ref CR-2025)"
+ *
+ * NOTICE.  This software was developed under funding from the U.S.
+ * Department of Energy.  As such, the U.S. Government has been granted
+ * for itself and others acting on its behalf a paid-up, nonexclusive,
+ * irrevocable, worldwide license in the Software to reproduce, prepare
+ * derivative works, and perform publicly and display publicly.
+ * Beginning five (5) years after the date permission to assert
+ * copyright is obtained from the U.S. Department of Energy, and subject
+ * to any subsequent five (5) year renewals, the U.S. Government is
+ * granted for itself and others acting on its behalf a paid-up,
+ * nonexclusive, irrevocable, worldwide license in the Software to
+ * reproduce, prepare derivative works, distribute copies to the public,
+ * perform publicly and display publicly, and to permit others to do so.
+ *
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pwd.h>
@@ -8,11 +33,13 @@
 #include <string.h>
 
 #include "chos.h"
-#include "config.h"
+#include "../config.h"
 
 int set_multi();
 char * check_chos(char *name);
 char ** set_env();
+
+#define MAXLINE 80
 
 int main(int argc, char *argv[])
 {
@@ -99,6 +126,8 @@ int is_chrooted(char *chos)
     return 1;
 }
 
+/* Simple function to set the chos link
+ */
 int set_multi(char *os)
 {
    FILE *stream;
@@ -115,7 +144,9 @@ int set_multi(char *os)
    return 0;
 }
 
-
+/*
+ * Simple function to get the target of the chos link
+ */
 int get_multi(char *os)
 {
    int len;
@@ -129,14 +160,17 @@ int get_multi(char *os)
    return 0;
 }
 
-
+/*
+ * This function looks at the /etc/chos.conf file and sets variables
+ * listed in the %ENV section based on the environment of the calling shell.
+ */
 char ** set_env()
 {
   FILE *stream;
   char **env;
   char *value;
   char *var;
-  char buffer[80];
+  char buffer[MAXLINE];
   int ret=0;
   int count=1;
   int setc=0;
@@ -150,52 +184,76 @@ char ** set_env()
     perror("chos.conf");
     return NULL; 
   }
-  buffer[0]=0;
-  while(ret!=EOF){
+
+/* We need to count the number of variables first. */
+  start=0;
+  while(1){
+    value=fgets(buffer,MAXLINE,stream);
+    if (value==NULL)
+      break;
+    if (buffer[0]=='#' || buffer[0]=='\n')
+      continue; 
+/* Remove new line */
+    while(*value!=0 && *value!='\n')
+	value++;
+    *value=0;
     if (start){
       count++;
+      if (buffer[0]=='%')
+	break;
     }
-    if (strcmp(buffer,ENVHEAD)==0){
+    else if (strcmp(buffer,ENVHEAD)==0){
       start=1;
     }
-    ret=fscanf(stream,"%s",buffer);
   }
+
+/* Allocate an array of pointers */
   env=(char **)malloc(sizeof(char *)*count);
   if (env==NULL){
     fprintf(stderr,"Failed to allocate memory for env\n");
     return NULL;
   }
-  buffer[0]=0;
-  start=0;
-  ret=0;
   rewind(stream);
-  while(ret!=EOF && setc<count){
+  start=0;
+  while(1){
+    value=fgets(buffer,MAXLINE,stream);
+    if (value==NULL)
+      break;
+    if (buffer[0]=='#' || buffer[0]=='\n')
+      continue; 
+/* Remove new line */
+    while(*value!=0 && *value!='\n')
+	value++;
+    *value=0;
     if (start){
+      count++;
+      if (buffer[0]=='%')
+	break;
       value=getenv(buffer);
       if (strcmp(buffer,"PATH")==0){
         env[setc]=DEFPATH;
         setc++;
       }
-      else if (value!=NULL){
+      else if (value!=NULL && setc<count){
         len=strlen(buffer)+strlen(value)+2;
-        var=(char *)malloc(len);
+        var=(char *)malloc(len);     /* Allocate space for entry */
         if (var==NULL){
           fprintf(stderr,"failed to allocate memory\n");
           return;
         }
-//        printf("%s=%s\n",buffer,value);
+/*        printf("%s=%s\n",buffer,value); */
         sprintf(var,"%s=%s",buffer,value);
         env[setc]=var;
         setc++;
       }
-//      else{
-//        fprintf(stderr,"var %s not set\n",buffer);
-//      }
+/*      else{
+ *       fprintf(stderr,"var %s not set\n",buffer);
+ *     }
+ */
     }
-    if (strcmp(buffer,ENVHEAD)==0){
+    else if (strcmp(buffer,ENVHEAD)==0){
       start=1;
     }
-    ret=fscanf(stream,"%s",buffer);
   }
   if (setc<count){
     env[setc]=NULL;
@@ -211,7 +269,7 @@ char ** set_env()
 char * check_chos(char *name)
 {
   FILE *cfile;
-  static char buffer[80];
+  static char buffer[MAXLINE];
   struct stat st;
   char *path;
   char *retpath=NULL;
@@ -237,25 +295,38 @@ char * check_chos(char *name)
     return NULL;
   }
 
-  buffer[0]=0;
   start=0;
-  ret=0;
-  while(ret!=EOF && retpath==NULL){
+  while(retpath==NULL){
+    path=fgets(buffer,MAXLINE,cfile);
+    if (path==NULL)
+      break;
+    if (buffer[0]=='#' || buffer[0]=='\n')
+      continue; 
+/* Remove new line */
+    while(*path!=0 && *path!='\n')
+	path++;
+    *path=0;
     if (start){
-      if (buffer[0]=='%' || buffer[0]=='\n')
+      if (buffer[0]=='%')
 	break;
-      path=strchr(buffer,':');
+      path=buffer;
+      while (*path!=':' && *path!=0){
+	path++;
+      }
+      if (*path==0){
+/*        fprintf(stderr,"Invalid line in chos config file: %s.\n",buffer); */
+        continue;
+      }
       *path=0;
       path++;
       if (strcmp(buffer,name)==0){
         retpath=path;
-	break;
+        break;
       }
     }
-    if (strcmp(buffer,SHELLHEAD)==0){
+    else if (strcmp(buffer,SHELLHEAD)==0){
       start=1;
     }
-    ret=fscanf(cfile,"%s",buffer);
   }
   fclose(cfile);
   return retpath;
