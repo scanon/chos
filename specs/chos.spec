@@ -1,6 +1,6 @@
 %define module chos
 %define version 0.02
-%define release 0.1
+%define release 0.2
 
 %define initdir /etc/rc.d/init.d
 
@@ -32,6 +32,9 @@ the DKMS framework.
 %build
 cd utils
 make
+cd ../
+cd pam_chos
+make
 
 %install
 if [ "$RPM_BUILD_ROOT" != "/" ]; then
@@ -41,11 +44,16 @@ mkdir -p $RPM_BUILD_ROOT/usr/bin/
 mkdir -p $RPM_BUILD_ROOT/usr/src/%{module}-%{version}/
 mkdir -p $RPM_BUILD_ROOT/usr/src/%{module}-%{version}/patches
 mkdir -p $RPM_BUILD_ROOT/usr/src/%{module}-%{version}/redhat_driver_disk
+mkdir -p $RPM_BUILD_ROOT/lib/security
+mkdir -p $RPM_BUILD_ROOT/etc
 cp -rf kernel/* $RPM_BUILD_ROOT/usr/src/%{module}-%{version}
 
 install -m 755 utils/chos $RPM_BUILD_ROOT/usr/bin/
-install -m 755 utils/chos $RPM_BUILD_ROOT/usr/bin/
+install -m 755 utils/mklocal $RPM_BUILD_ROOT/usr/bin/
 install -m 644 %{SOURCE1} $RPM_BUILD_ROOT/usr/src/%{module}-%{version}
+install -m 755 pam_chos/pam_chos.so $RPM_BUILD_ROOT/lib/security/
+install -m 644 conf/chos $RPM_BUILD_ROOT/etc/
+install -m 644 conf/chos.conf $RPM_BUILD_ROOT/etc/
 
 mkdir -p $RPM_BUILD_ROOT%{initdir}
 install -m755  utils/chos.init $RPM_BUILD_ROOT%{initdir}/chos
@@ -62,10 +70,13 @@ fi
 
 %files
 %defattr(-,root,root)
-%dir /usr/src/%{module}-%{version}/
 /usr/src/%{module}-%{version}/
 %doc  README LICENSE
 /chos
+/etc/chos
+/etc/chos.conf
+/lib/security/pam_chos.so
+/usr/bin/mklocal
 %config %{initdir}/*
 %defattr(4755,root,root)
 /usr/bin/chos
@@ -104,6 +115,7 @@ if [ -z "$loaded_tarballs" ]; then
 		echo -e "kernel source for this kernel does not seem to be installed."
 	fi
 fi
+/usr/bin/mklocal
 /sbin/chkconfig chos on
 /etc/init.d/chos start
 exit 0
