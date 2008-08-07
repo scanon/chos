@@ -10,7 +10,7 @@ MFLAGS =
 KERNEL=`uname -r`
 IFLAGS = -I/lib/modules/$(KERNEL)/build/include
 CFLAGS = -O3 -DMODULE -DSYSCALL_NOT_EXPORTED $(IFLAGS)
-VERSION = 0.01
+VERSION = 0.02
 
 
 all:  chos
