@@ -1,0 +1,24 @@
+#!/bin/sh
+
+BASE="/chos"
+MAP="/etc/auto.local"
+LOCAL=$BASE/local
+MOUNT=/proc/chos/link/
+
+echo "Creating directories"
+mkdir $BASE
+mkdir $BASE/auto
+mkdir $BASE/export
+mkdir $BASE/local
+
+echo "Creating links"
+for dir in "bin" "dev" "etc" "extra" "home" "initrd" "lib" "opt" "sbin" "tmp" "u" "usr" "var"
+do
+rm $BASE/$dir
+ln -sf $MOUNT/$dir $BASE/$dir
+done
+mkdir $BASE/afs
+#rm $BASE/afs
+#ln -sf ./auto/afs5 $BASE/afs
+
+

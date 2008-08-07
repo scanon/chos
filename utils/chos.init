@@ -1,0 +1,84 @@
+#!/bin/sh
+#
+# chkconfig: 2345 26 74
+# description: chos is used for supporting multiple installations concurrently
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# Source function library.
+. /etc/init.d/functions
+
+RETVAL=0
+
+start() {
+	echo -n $"Starting up chos: "
+
+	/sbin/modprobe chos &>/dev/null
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/chos
+	echo
+}
+
+stop() {
+	echo -n $"Shutting down chos: "
+	/sbin/modprobe -r chos &>/dev/null
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/chos
+	echo
+}
+
+dostatus() {
+	count=`lsmod|grep -c chos`
+        if [ $count -eq 1 ] ; then 
+		echo "CHOS is loaded"
+	else
+		echo "CHOS is not loaded"
+        fi
+	RETVAL=$?
+}
+
+restart() {
+	stop
+	start
+	RETVAL=$?
+}
+
+condrestart() {
+	[ -e /var/lock/subsys/chos ] && restart || :
+}
+
+# See how we were called.
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  status)
+	dostatus
+	;;
+  restart|reload)
+	restart
+	;;
+  condrestart)
+	condrestart
+	;;
+  *)
+	echo "Usage: chos.init {start|stop|status|restart|reload|condrestart}"
+	exit 1
+esac
+
+exit $RETVAL

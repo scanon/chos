@@ -1,0 +1,13 @@
+#!/bin/sh
+#rmmod chos
+
+#insmod ./chos.o
+
+echo 1 > /proc/chos/savestate
+
+rmmod chos
+
+add=`dmesg|grep saved|tail -1|sed 's/.* //'`
+
+echo $add
+modprobe chos table=$add
