@@ -108,8 +108,8 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
   }
   os=check_chos(osenv);
   if (os==NULL){
-    syslog(LOG_WARNING,"Warning: requested os is not recognized\n");
-    os=osenv;
+    syslog(LOG_ERR,"Error: requested os not allowed or error in check\n");
+    return ret;
   }
   
   if (geteuid()!=0){
@@ -120,15 +120,12 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     syslog(LOG_ERR,"Failed to set chroot OS system link.\nPerhaps there is a permission problem.\n");
     return ret;
   }
-
-/*  
- *  if (chroot(CHROOT)!=0 ){
- *    syslog(LOG_ERR,"chroot failed.\n");
- *    syslog(LOG_ERR,"Perhaps this module isn't running as root.\n");
- *    return ret;
- *  }
- */
-
+  
+  if (chroot(CHROOT)!=0 ){
+    syslog(LOG_ERR,"chroot failed.\n");
+    syslog(LOG_ERR,"Perhaps this module isn't running as root.\n");
+    return ret;
+  }
   sprintf(envvar,"CHOS=%.40s",osenv);
   pam_putenv(pamh, envvar);
   closelog();
