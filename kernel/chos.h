@@ -28,11 +28,25 @@
  */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,99)
+#define MOD_INC   /* nop */
+#define MOD_DEC   /* nop */
 #define KERN26
+#else
+#define MOD_INC  MOD_INC_USE_COUNT
+#define MOD_DEC  MOD_DEC_USE_COUNT
+#endif
+
+
+// This should catch redhat 9 kernels as well
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,99) || defined(PID_MAX_DEFAULT)
+#define PID_MAX PID_MAX_DEFAULT
 #define PARENT parent
 #else
 #define PARENT p_opptr
 #endif
+
+// Root directory
+#define CHOSROOT "/chos"
 
 // Version 1 chos data structures
 
@@ -72,8 +86,19 @@ struct chos_proc {
 struct chos {
 	int magic;
 	int version;
-	int pid_max;
+	unsigned long pid_max;
 	struct proc_dir_entry *dir; /* pseudo file entries */
 	struct chos_proc *procs;
+	struct nameidata named;
+	int fork_wrapped;
 };
+
+struct valid_path {
+        char *path;
+        int length;
+        struct list_head list;
+};
+
+LIST_HEAD(valid_paths);
+
 

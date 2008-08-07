@@ -1,6 +1,6 @@
 %define module chos
-%define version 0.03
-%define release 1
+%define version 0.05
+%define release 0pre3
 
 #
 # DKMS is a utility for managing modules outside of the kernel.
@@ -9,7 +9,7 @@
 %define usedkms 1
 # Optionally, you can distribute a pre-built binary tar file with the
 # rpm.  The systems wouldn't need the kernel source then.
-%define withdkmstarfile 1
+%define withdkmstarfile 0
 %define dkmstarfilever 2.4.20-31psmp
 
 #
@@ -115,7 +115,7 @@ fi
 /usr/bin/mklocal
 %{_mandir}/man1/chos.1*
 %config /%{_initrddir}/*
-%defattr(4755,root,root)
+%defattr(755,root,root)
 /usr/bin/chos
 
 
@@ -161,16 +161,32 @@ if [ -z "$loaded_tarballs" ]; then
 	fi
 fi
 %endif
-/usr/bin/mklocal
+
 /sbin/chkconfig chos on
 /etc/init.d/chos start
+
+echo ""
+echo "If you run automounters, be sure to replicate all entries and prepend the paths with /chos."
+echo "This is needed to insure that CHOS environments can access these file systems."
+echo "After modifying the auto.master file, do an /etc/init.d/autofs reload to refresh"
+echo "the daemons."
+echo ""
+echo "If you use AFS, it is recommended to mount afs under /chos/afs and add a symlink for "
+echo "/afs -> /chos/afs.  This will allow CHOS environments to access AFS. This will require a"
+echo "reboot to take effect."
+echo ""
+echo "Finally, add"
+echo "  session    optional     pam_chos.so"
+echo "to the pam configuration for sshd, so that users automatically get there CHOS OS."
 exit 0
 
 %preun
+%if %{usedkms}
 echo -e
 echo -e "Uninstall of chos module (version %{version}) beginning:"
 dkms remove -m %{module} -v %{version} --all --rpm_safe_upgrade
 exit 0
+%endif %{usedkms}
 
 %changelog
 * Thu Jun 10 2004 Shane Canon <canon@nersc.gov>

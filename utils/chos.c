@@ -58,9 +58,9 @@ int main(int argc, char *argv[])
      return -2;
    }
    os=check_chos(osenv);
-   if (os==NULL){
-     fprintf(stderr,"Error: requested os not allowed or error in check\n");
-     return -2;
+   if (os==NULL && strcmp(osenv,DEFAULT)){
+     fprintf(stderr,"Warning: The requested os is not recognized.  Trying anyway.\n");
+     os=osenv;
    }
 
    pw=getpwuid(getuid());
@@ -69,49 +69,41 @@ int main(int argc, char *argv[])
      return -2;
    }
 
-   if (get_multi(chos)!=0){
-     fprintf(stderr,"Failed to get chroot OS system link.\nPerhaps the system isn't fully configured.\n");
+   if (os && get_multi(chos)!=0){
+     fprintf(stderr,"Failed to read the chroot OS system link.\nPerhaps the system isn't fully configured.\n");
      return -3;
    }
 
 /* If the current chos is different from the requested chos then update it */
-   if (geteuid()!=0){
-     fprintf(stderr,"Warning: Insufficient privelege to change environment (euid=%d).  Confirm that CHOS was successful\n",geteuid());
-   }
-   if (strncmp(chos,os,MAX_OS)!=0 && set_multi(os)!=0){
+   if (os && strncmp(chos,os,MAX_OS)!=0 && set_multi(os)!=0){
      fprintf(stderr,"Failed to set chroot OS system link.\nPerhaps there is a permission problem.\n");
      return -3;
    }
 
-   if (!is_chrooted(chos) && chroot(CHROOT)!=0 ){
-    fprintf(stderr,"chroot failed.\n");
-    fprintf(stderr,"Perhaps this node isn't configured.\n");
-    return -4;
-  }
+   setuid(getuid());
+   if (argc==1){
+      newenv=set_env();
+      if (newenv==NULL){
+        fprintf(stderr,"Failed to initialize environment for login\n");
+        return -1;
+      }
+      newarg[0]=pw->pw_shell;
+      if (strstr(pw->pw_shell,"csh")){
+        newarg[1]="-l";
+      }
+      else{
+        newarg[1]="-";
+      }
+      newarg[2]=NULL;
+      execve(pw->pw_shell,newarg,newenv);
+    }
+    else{
+      execvp(argv[1],&argv[1]);
+    }
+}
 
-/* We now fork, so we can do some cleanup on exit.
- */
-
-     setuid(getuid());
-     if (argc==1){
-       newenv=set_env();
-       if (newenv==NULL){
-         fprintf(stderr,"Failed to initialize environment for login\n");
-         return -1;
-       }
-       newarg[0]=pw->pw_shell;
-       if (strstr(pw->pw_shell,"csh")){
-         newarg[1]="-l";
-       }
-       else{
-         newarg[1]="-";
-       }
-       newarg[2]=NULL;
-       execve(pw->pw_shell,newarg,newenv);
-     }
-     else{
-       execvp(argv[1],&argv[1]);
-     }
+int configure_chos()
+{
 }
 
 int is_chrooted(char *chos)

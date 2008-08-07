@@ -42,7 +42,6 @@ MOUNT=/proc/chos/link/
 echo "Creating directories"
 mkdir $BASE
 mkdir $BASE/auto
-mkdir $BASE/export
 mkdir $BASE/local
 
 echo "Creating links"

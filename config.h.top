@@ -71,3 +71,4 @@
 
 #define ENVHEAD "%ENV"
 
+#define DEFAULT "default"

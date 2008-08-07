@@ -66,8 +66,9 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
   char osenv[MAXLINE];
   char userfile[MAX_LEN];
   char envvar[50];
-  int count;
+  int count=0;
   int conf;
+  int usedefault=0;
   
   openlog("pam_chos", LOG_PID, LOG_AUTHPRIV);
   
@@ -88,14 +89,15 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
 
   sprintf(userfile,"%.100s/%.5s",pw->pw_dir,CONFIG);
   conf=open(userfile,O_RDONLY);
-  if (conf==-1){
-    return onerr;
-  }
-  else{
+  if (conf>=0){
     count=read(conf,osenv,MAXLINE-1);
     osenv[count]=0;
+    close(conf);
   }
-  close(conf);
+  if (count==0){
+    strcpy(osenv,DEFAULT);
+    count=7;
+  }
 
   for (i=0;i<count;i++){
     if (osenv[i]=='\n')break;
@@ -107,25 +109,23 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     return onerr;
   }
   os=check_chos(osenv);
-  if (os==NULL){
-    syslog(LOG_ERR,"Error: requested os not allowed or error in check\n");
-    return ret;
+
+/* We are using the default, but there isn't a default
+ *  spec'd in /etc/chos
+ */
+  if (os==NULL && strcmp(osenv,DEFAULT)==0){
+    usedefault=1;  
+  }
+  else if (os==NULL){
+    syslog(LOG_WARNING,"Warning: requested os (%s) is not recognized\n",osenv);
+    os=osenv;  /* Let's try it just in case */
   }
   
-  if (geteuid()!=0){
-    syslog(LOG_ERR,"Warning: Insufficient privelege to change environment (euid=%d).  Confirm that CHOS was successful\n",geteuid());
+  if (usedefault==0 && set_multi(os)!=0){
+    syslog(LOG_ERR,"Failed to set OS to requested system.\n");
+    return ret;
   }
 
-  if (set_multi(os)!=0){
-    syslog(LOG_ERR,"Failed to set chroot OS system link.\nPerhaps there is a permission problem.\n");
-    return ret;
-  }
-  
-  if (chroot(CHROOT)!=0 ){
-    syslog(LOG_ERR,"chroot failed.\n");
-    syslog(LOG_ERR,"Perhaps this module isn't running as root.\n");
-    return ret;
-  }
   sprintf(envvar,"CHOS=%.40s",osenv);
   pam_putenv(pamh, envvar);
   closelog();
@@ -233,9 +233,6 @@ char * check_chos(char *name)
     }
   }
   fclose(cfile);
-  if (retpath==NULL){
-    syslog(LOG_ERR,"Error: %s not found\n",name);
-  }
   return retpath;
 }
 

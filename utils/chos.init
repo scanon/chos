@@ -27,19 +27,25 @@
 # description: chos is used for supporting multiple installations concurrently
 #
 
+CONF=/etc/chos
+
 RETVAL=0
 
 start() {
 	echo -n $"Starting up chos: "
 
 	/sbin/modprobe chos &>/dev/null
+	makelinks	
+	mountlocal
 	RETVAL=$?
 	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/chos
 	echo
+	loadvalid
 }
 
 stop() {
 	echo -n $"Shutting down chos: "
+	unmountlocal
 	/sbin/modprobe -r chos &>/dev/null
 	RETVAL=$?
 	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/chos
@@ -56,6 +62,10 @@ dostatus() {
 	RETVAL=$?
 }
 
+reload() {
+	echo $"Reloading Valid configs for chos: "
+	loadvalid
+}
 restart() {
 	stop
 	start
@@ -64,6 +74,58 @@ restart() {
 
 condrestart() {
 	[ -e /var/lock/subsys/chos ] && restart || :
+}
+
+loadvalid() {
+	if [ -e $CONF ] ; then
+		echo "-" >> /proc/chos/valid
+
+		list=`cat /etc/chos| awk -F: \
+			'{if (/^#/){next};
+			  if (/^$/){next};
+			  if (/^%/){start=0};
+			  if (start==1){print $2};
+			  if ($1="%SHELLS"){start=1}
+			 }'|sort|uniq`
+
+		echo -n "Adding: "
+		for line in $list ; do
+			echo -n "$line"
+  			echo $line >> /proc/chos/valid
+		done
+		echo ""
+	fi
+}
+
+
+mountlocal() {
+	cat /etc/fstab| \
+	awk '{
+		if ($0 ~ /noauto/){next;}
+		if ($0 ~ /swap/){next;}
+		printf "if [ ! -e \"/chos/local%s\" ] ; then mkdir /chos/local%s; fi;mount -t %s -o %s %s /chos/local%s\n",$2,$2,$3,$4,$1,$2
+	}'|sh
+}
+
+unmountlocal() {
+	export LANG=C
+
+	grep chos /proc/mounts| grep -v autofs|sort -r +1| \
+	awk '{
+	  printf "/bin/umount %s\n",$2;
+	}'|sh
+}
+
+makelinks() {
+  for dir in `ls /|grep -v chos|grep -v lost+found|grep -v afs`
+  do
+    if [ ! -e "/chos/$dir" ] ; then
+      if [ ! -h "/chos/$dir" ] ; then
+        echo $dir
+        ln -s /local/$dir /chos/$dir
+      fi
+    fi
+  done
 }
 
 # See how we were called.
@@ -77,7 +139,10 @@ case "$1" in
   status)
 	dostatus
 	;;
-  restart|reload)
+  reload)
+	reload
+	;;
+  restart)
 	restart
 	;;
   condrestart)

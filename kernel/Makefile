@@ -12,7 +12,6 @@ MODMODE=644
 
 DKMS=$(FAKEROOT)/usr/src/chos-$(VERSION)
 
-include ../Make.Rules
 ifneq ($(KERNELRELEASE),)
 
 obj-m	+= $(MOD)
@@ -24,15 +23,19 @@ include $(TOPDIR)/Rules.make
 
 chos.o: chos_lkm.o
 chos.o: $(chos-objs)
+	echo $(KERNELRELEASE)
 	$(LD) -r -o $@ $(chos-objs)
 endif
 #modules: chos_lkm.o
 else
+include ../Make.Rules
 KDIR	:= $(KERNEL_BASE)
 PWD		:= $(shell pwd)
 
 all:
 ifeq ($(BUILD_KERNEL),1)
+	echo "Creating config for $(KERNEL_VERSION)"
+	./find_fork.sh $(KERNEL_VERSION)
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
 endif
 endif
@@ -48,6 +51,7 @@ installdkms:
 	$(INSTALL) -m 644 chos_lkm.c $(DKMS)
 	$(INSTALL) -m 644 chos.h $(DKMS)
 	$(INSTALL) -m 644 dkms.conf $(DKMS)
+	$(INSTALL) -m 755 find_fork.sh $(DKMS)
 	$(INSTALL) -m 644 Makefile.dkms $(DKMS)/Makefile
 
 
