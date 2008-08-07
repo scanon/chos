@@ -1,6 +1,6 @@
 %define module chos
-%define version 0.05
-%define release 0pre3
+%define version 0.06
+%define release 0pre1
 
 #
 # DKMS is a utility for managing modules outside of the kernel.
@@ -108,6 +108,7 @@ fi
 %doc  README LICENSE INSTALL NOTICE
 %doc test/check_chos
 %doc utils/job_starter.c
+%doc utils/pam_job_starter.c
 /chos
 %config /etc/chos
 %config /etc/chos.conf
@@ -189,6 +190,10 @@ exit 0
 %endif %{usedkms}
 
 %changelog
+* Tue May 24 2005 Shane Canon <canon@nersc.gov>
+- Added pam_job_starter
+- Modified pam_chos to check CHOS env. variable
+
 * Thu Jun 10 2004 Shane Canon <canon@nersc.gov>
 - autoconf support
 - adjustments to dkms

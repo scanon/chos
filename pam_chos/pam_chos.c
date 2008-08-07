@@ -29,6 +29,13 @@
  * for PAM modules.
  */
 
+/*
+ * Here is the order of how things are used
+ * - CHOS env
+ * - CHOS file
+ * - CHOS default
+ * - no chos
+ */
 
 #define	PAM_SM_SESSION
 #include <security/pam_modules.h>
@@ -49,6 +56,7 @@
 
 int set_multi(char *os);
 char * check_chos(char *name);
+int read_chos_file(char *dir,char *osenv,int max);
 
 #define	CONFIG	".chos"
 #define MAX_LEN 256
@@ -58,16 +66,12 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
 {
   int ret = PAM_SESSION_ERR;
   int onerr = PAM_SUCCESS;
-  int i;
-//  char conf_line[LINE_MAX];
   char const *user;
   struct passwd *pw;
   char *os;
-  char osenv[MAXLINE];
-  char userfile[MAX_LEN];
+  const char *env;
+  char osenv[MAXLINE+1];
   char envvar[50];
-  int count=0;
-  int conf;
   int usedefault=0;
   
   openlog("pam_chos", LOG_PID, LOG_AUTHPRIV);
@@ -76,7 +80,6 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     syslog(LOG_ERR, "can't get username: %s", pam_strerror(pamh, ret));
     return ret;
   }
-  
   
   pw=getpwnam(user);
   if (pw->pw_uid==0){
@@ -87,26 +90,16 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     return ret;
   }
 
-  sprintf(userfile,"%.100s/%.5s",pw->pw_dir,CONFIG);
-  conf=open(userfile,O_RDONLY);
-  if (conf>=0){
-    count=read(conf,osenv,MAXLINE-1);
-    osenv[count]=0;
-    close(conf);
+//  if ((env=pam_getenv(pamh,"CHOS"))){
+  if ((env=getenv("CHOS"))){
+    strncpy(osenv,env,MAXLINE);
   }
-  if (count==0){
-    strcpy(osenv,DEFAULT);
-    count=7;
-  }
-
-  for (i=0;i<count;i++){
-    if (osenv[i]=='\n')break;
-  }
-  osenv[i]=0;
-
-  if (osenv[0]==0){
-    syslog(LOG_ERR,"CHOS not set\n");
-    return onerr;
+  else{
+    read_chos_file(pw->pw_dir,osenv,MAXLINE);
+    if (osenv[0]==0){
+      syslog(LOG_ERR,"CHOS not set\n");
+      return onerr;
+    }
   }
   os=check_chos(osenv);
 
@@ -236,3 +229,28 @@ char * check_chos(char *name)
   return retpath;
 }
 
+int read_chos_file(char *dir,char *osenv,int max)
+{
+  int conf;
+  int i;
+  int count=0;
+  char userfile[MAX_LEN+1];
+
+  sprintf(userfile,"%.100s/%.5s",dir,CONFIG);
+  conf=open(userfile,O_RDONLY);
+  if (conf>=0){
+    count=read(conf,osenv,MAXLINE-1);
+    osenv[count]=0;
+    close(conf);
+  }
+  if (count==0){
+    strcpy(osenv,DEFAULT);
+    count=7;
+  }
+
+  for (i=0;i<count;i++){
+    if (osenv[i]=='\n')break;
+  }
+  osenv[i]=0;
+  return count;
+}
