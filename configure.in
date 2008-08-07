@@ -1,11 +1,11 @@
 ****************************************************************************/
 # Initialization
 #****************************************************************************/
-m4_define(PROJECT_NAME,  [CHOS])
+m6_define(PROJECT_NAME,  [CHOS])
 m4_define(PROJECT_EMAIL, [chos@nersc.gov])
 m4_define(PROJECT_TAR,   [chos])
 m4_define(PROJECT_MAJOR, 0)
-m4_define(PROJECT_MINOR, 3)
+m4_define(PROJECT_MINOR, 6)
 m4_define(PROJECT_MICRO, 0)
 
 AC_INIT(utils/chos.c)
