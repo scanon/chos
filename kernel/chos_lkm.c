@@ -1,6 +1,8 @@
+#ifndef MODULE
 #define MODULE
 #define __KERNEL__
 #define __SMP__
+#endif
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
@@ -61,6 +63,8 @@
 #include <linux/vmalloc.h>
 #include <asm/unistd.h>
 #include <asm/uaccess.h>
+#include <asm/cacheflush.h>
+#include <asm/pgtable.h>
 #include <linux/list.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,99)
 #include <linux/moduleparam.h>
@@ -71,7 +75,7 @@
 #include "chos.h"
 #include "config.h"
 
-EXPORT_NO_SYMBOLS;
+//EXPORT_NO_SYMBOLS;
 
 #ifdef MODULE_LICENSE
 MODULE_LICENSE("BSD");
@@ -107,14 +111,17 @@ MODULE_VERSION(MY_MODULE_VERSION);
 /* variables */
 struct chos *ch;
 int save_state=0;
-static void **sys_call_table;
-#ifdef CONFIG_IA32_EMULATION
-static void **ia32_sys_call_table;
-#endif
 
 
 #if defined(START_ADD) && defined(END_ADD)
 #define WRAP_DOFORK
+#endif
+
+#ifdef SCT
+int (*orig_sys_exit)(int error_code);
+void (*orig_sys_exit_group)(int error_code);
+long my_sys_exit(int error_code);
+void my_sys_exit_group(int error_code);
 #endif
 
 
@@ -213,7 +220,7 @@ void set_link(struct chos_link *link, struct task_struct *t)
    * be for a previous process with the same pid.  The start time would
    * be different though.
    */
-  p->start_time=t->start_time;
+  p->start_time=t->start_time.tv_sec;
   write_unlock(&(p->lock));
 }
 
@@ -233,7 +240,7 @@ void cleanup_links(void)
       reset_link(&(ch->procs[i]));
       count++;
     }
-    else if (ch->procs[i].link!=NULL && ch->procs[i].start_time!=t->start_time){
+    else if (ch->procs[i].link!=NULL && ch->procs[i].start_time!=t->start_time.tv_sec){
       reset_link(&(ch->procs[i]));
       count++;
     }
@@ -261,7 +268,7 @@ struct chos_link * lookup_link(struct task_struct *t)
 
   p=&(ch->procs[t->pid]);
   read_lock(&(p->lock));
-  if (p->link==NULL || p->start_time!=t->start_time){  /* Not cached or incorrect */
+  if (p->link==NULL || p->start_time!=t->start_time.tv_sec){  /* Not cached or incorrect */
     read_unlock(&(p->lock));
     link=lookup_link(t->PARENT);  /* Lookup parent */
     if (link!=NULL)
@@ -604,6 +611,17 @@ int init_chos(void)
     ch->fork_wrapped=1;
   }
 #endif
+#ifdef SCT
+  orig_sys_exit=sys_call_table[__NR_exit];
+  orig_sys_exit_group=sys_call_table[__NR_exit_group];
+  printk("sys_call_table=%lx\n",(unsigned long)sys_call_table);
+  printk("orig exit=%lx\n",(unsigned long)orig_sys_exit);
+  printk("new exit=%lx\n",(unsigned long)my_sys_exit);
+//  change_page_attr(virt_to_page(sys_call_table),1,PAGE_KERNEL);
+//  global_flush_tlb();
+  sys_call_table[__NR_exit]=my_sys_exit;
+  sys_call_table[__NR_exit_group]=my_sys_exit_group;
+#endif
   return 0;
 }
 
@@ -726,12 +744,17 @@ void cleanup_module(void)
 #ifdef WRAP_DOFORK
   cleanup_do_fork();
 #endif
+#ifdef SCT
+  sys_call_table[__NR_exit]=orig_sys_exit;
+  sys_call_table[__NR_exit_group]=orig_sys_exit_group;
+#endif
   /* remove chos proc file entries */
   remove_proc_entry("setchos", ch->dir);
   remove_proc_entry("resetchos", ch->dir);
   remove_proc_entry("version", ch->dir);
   remove_proc_entry("savestate", ch->dir);
   remove_proc_entry("link", ch->dir);
+  remove_proc_entry("valid", ch->dir);
   remove_proc_entry(MODULE_NAME,NULL);
   /*
    * If save state isn't set, free up global struct and array.  Otherwise,
@@ -864,5 +887,31 @@ int jumper(unsigned long clone_flags,
     printk("You shouldn't see this!!!\n");
     printk("You shouldn't see this!!!\n");
     printk("You shouldn't see this!!!\n");
+}
+#endif
+
+#ifdef SCT
+long my_sys_exit(int error_code)
+{
+  struct task_struct *task;
+  struct list_head *list;
+
+  list_for_each(list, &current->children) {
+    task = list_entry(list, struct task_struct, sibling);
+    lookup_link(task);
+  }
+  return orig_sys_exit(error_code);
+}
+
+void my_sys_exit_group(int error_code)
+{
+  struct task_struct *task;
+  struct list_head *list;
+
+  list_for_each(list, &current->children) {
+    task = list_entry(list, struct task_struct, sibling);
+    lookup_link(task);
+  }
+  orig_sys_exit_group(error_code);
 }
 #endif
