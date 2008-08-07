@@ -10,7 +10,7 @@ MFLAGS =
 KERNEL=`uname -r`
 IFLAGS = -I/lib/modules/$(KERNEL)/build/include
 CFLAGS = -O3 $(IFLAGS)
-VERSION = 0.01
+VERSION = 0.02
 
 #
 # The Objects...
@@ -30,6 +30,3 @@ clean:
 
 test:
 	/sbin/insmod chos.o
-
-log:
-	grep SM /var/log/messages|tail

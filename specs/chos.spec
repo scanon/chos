@@ -1,6 +1,6 @@
 %define module chos
 %define version 0.02
-%define release 0.2
+%define release 1
 
 %define initdir /etc/rc.d/init.d
 
@@ -46,6 +46,7 @@ mkdir -p $RPM_BUILD_ROOT/usr/src/%{module}-%{version}/patches
 mkdir -p $RPM_BUILD_ROOT/usr/src/%{module}-%{version}/redhat_driver_disk
 mkdir -p $RPM_BUILD_ROOT/lib/security
 mkdir -p $RPM_BUILD_ROOT/etc
+mkdir -p ${RPM_BUILD_ROOT}%{_mandir}/man1
 cp -rf kernel/* $RPM_BUILD_ROOT/usr/src/%{module}-%{version}
 
 install -m 755 utils/chos $RPM_BUILD_ROOT/usr/bin/
@@ -54,6 +55,8 @@ install -m 644 %{SOURCE1} $RPM_BUILD_ROOT/usr/src/%{module}-%{version}
 install -m 755 pam_chos/pam_chos.so $RPM_BUILD_ROOT/lib/security/
 install -m 644 conf/chos $RPM_BUILD_ROOT/etc/
 install -m 644 conf/chos.conf $RPM_BUILD_ROOT/etc/
+install -m644 docs/chos.1 ${RPM_BUILD_ROOT}%{_mandir}/man1/chos.1
+
 
 mkdir -p $RPM_BUILD_ROOT%{initdir}
 install -m755  utils/chos.init $RPM_BUILD_ROOT%{initdir}/chos
@@ -73,10 +76,11 @@ fi
 /usr/src/%{module}-%{version}/
 %doc  README LICENSE
 /chos
-/etc/chos
-/etc/chos.conf
+%config /etc/chos
+%config /etc/chos.conf
 /lib/security/pam_chos.so
 /usr/bin/mklocal
+%{_mandir}/man1/chos.1*
 %config %{initdir}/*
 %defattr(4755,root,root)
 /usr/bin/chos
