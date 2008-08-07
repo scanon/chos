@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+# This script can check for common problems with CHOS
+#
+# Run with no args
+#
+# Set CHOS to test a particular installation
+#
+
+if [ `lsmod |grep chos|wc -l` -lt 1 ] ; then
+  echo "CHOS module isn't loaded"
+  exit
+fi
+
+if [ `ps auxww|grep automount|grep chos|wc -l` -ne 2 ] ; then
+  echo "CHOS automounters arent' running"
+  exit
+fi
+
+if [ -z $CHOS ] ; then
+  echo "CHOS isn't defined"
+  echo "Define it to test an installation"
+  exit
+fi 
+
+if [ `grep -c "$CHOS:" /etc/chos` -eq 0 ] ; then
+  echo "CHOS isn't defined in /etc/chos file"
+  exit
+fi
+
+PATH=`grep "$CHOS:" /etc/chos|sed 's/.*://'`
+
+if [ \! -e $PATH ] ; then
+  echo "Cannot stat $PATH"
+  exit
+fi
+
+if [ \! -e "/chos/$PATH" ] ; then
+  echo "Cannot stat /chos/$PATH"
+  exit
+fi
+
+if [ \! -e "/chos/$PATH/bin/bash" ] ; then
+  echo "Cannot stat /chos/$PATH/bin/bash"
+  exit
+fi

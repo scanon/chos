@@ -1,0 +1,11 @@
+#!/bin/sh
+
+for dir in `ls /|grep -v chos|grep -v lost+found` 
+do
+  if [ ! -e "/chos/$dir" ] ; then
+    if [ ! -h "/chos/$dir" ] ; then
+  echo $dir
+      ln -s /local/$dir /chos/$dir
+    fi
+  fi
+done

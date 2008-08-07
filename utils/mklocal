@@ -1,0 +1,73 @@
+#!/bin/sh
+#
+# CHOS (c) 2004, The Regents of the University of California, through
+# Lawrence Berkeley National Laboratory (subject to receipt of any
+# required approvals from the U.S. Dept. of Energy).  All rights
+# reserved.
+# 
+# If you have questions about your rights to use or distribute this
+# software, please contact Berkeley Lab's Technology Transfer
+# Department at  TTD@lbl.gov referring to "CHOS (LBNL Ref CR-2025)"
+# 
+# NOTICE.  This software was developed under funding from the U.S.
+# Department of Energy.  As such, the U.S. Government has been granted
+# for itself and others acting on its behalf a paid-up, nonexclusive,
+# irrevocable, worldwide license in the Software to reproduce, prepare
+# derivative works, and perform publicly and display publicly.
+# Beginning five (5) years after the date permission to assert
+# copyright is obtained from the U.S. Department of Energy, and subject
+# to any subsequent five (5) year renewals, the U.S. Government is
+# granted for itself and others acting on its behalf a paid-up,
+# nonexclusive, irrevocable, worldwide license in the Software to
+# reproduce, prepare derivative works, distribute copies to the public,
+# perform publicly and display publicly, and to permit others to do so.
+# 
+#
+# TODO: write a generic script that creates a mirror of the real
+# root in /chos.
+
+BASE="/chos"
+MAP="/etc/auto.local"
+MOUNT="/local"
+
+echo "Creating auto.local and local links"
+
+echo "proc      -fstype=proc        :none" > $MAP
+echo "shm	-fstype=tmpfs       :none" >> $MAP
+echo "pts	-fstype=devpts,gid=5,mode=620      :none" >> $MAP
+
+# Create root map
+#
+dev=`df /|grep dev|sed 's/ .*//'`
+type=`grep /dev/root /proc/mounts |awk '{print $3}'`
+echo "root      -fstype=$type	        :$dev" >> $MAP
+ln -nsf $MOUNT/root/tmp $BASE/tmp
+
+
+# Scratch
+#
+count=`grep -c " /scratch" /proc/mounts`
+if [ $count -gt 0 ] ; then
+#if [ -e /scratch ] ; then
+  line=`grep " /scratch" /proc/mounts|head -1`
+  dev=`echo $line|sed 's/ .*//'`
+  type=`echo $line|awk '{print $3}'`
+  echo "scratch   -fstype=$type,nosuid       :$dev" >> $MAP
+
+  ln -nsf $MOUNT/scratch $BASE/scratch
+fi
+
+# Export data
+#
+count=`grep -c " /export/data" /proc/mounts`
+if [ $count -gt 0 ] ; then
+#if [ -e /export/data ] ; then
+  line=`grep " /export/data" /proc/mounts|head -1`
+  dev=`echo $line|sed 's/ .*//'`
+  type=`echo $line|awk '{print $3}'`
+  echo "data      -fstype=$type,nosuid        :$dev" >> $MAP
+  mkdir $BASE/export
+  mv $BASE/export/data $BASE/export/data.old
+  ln -nsf $MOUNT/data $BASE/export/data
+fi
+

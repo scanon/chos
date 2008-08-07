@@ -1,0 +1,21 @@
+# This is a recursive approach.
+# When make is run in the module directory, KERNELRELEASE will
+# not be defined.  As a result, the kernel make stucture will
+# be called specifying that the module directory should be built.
+# This will run make again in the module directory, but KERNELRELEASE
+# will be defined.
+#
+#
+MOD = chos.o
+
+obj-m   += chos.o
+chos-objs := chos_lkm.o
+
+
+# If this is a 2.4 kernel...
+ifeq ($(PATCHLEVEL),4)
+include $(TOPDIR)/Rules.make
+
+chos.o: $(chos-objs)
+	$(LD) -r -o $@ $(chos-objs)
+endif
