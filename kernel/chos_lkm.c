@@ -6,7 +6,7 @@
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
-#define MY_MODULE_VERSION "0.05"
+#define MY_MODULE_VERSION "0.07"
 
 /*
  * chos, Linux Kernel Module.
@@ -52,7 +52,6 @@
  */
 
 
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -73,7 +72,7 @@
 #include <asm/desc.h>
 
 #include "chos.h"
-#include "config.h"
+#include "address.h"
 
 //EXPORT_NO_SYMBOLS;
 
@@ -115,6 +114,12 @@ int save_state=0;
 
 #if defined(START_ADD) && defined(END_ADD)
 #define WRAP_DOFORK
+#endif
+#if defined(START_ADD) && defined(LENGTH)
+#define WRAP_DOFORK
+#define END_ADD (START_ADD+LENGTH)
+int init_do_fork(void);
+void cleanup_do_fork(void);
 #endif
 
 #ifdef SCT
@@ -537,6 +542,7 @@ static int link_readlink(struct dentry *dentry, char *buffer, int buflen)
 /* This is the link that is used to point to the different OS trees.  
  * It calls lookup_link to resolve the link target.
  */
+
 static int link_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
   struct chos_link *link;
@@ -557,8 +563,8 @@ static int link_follow_link(struct dentry *dentry, struct nameidata *nd)
  * our special link.
  */
 static struct inode_operations link_inode_operations = {
-        readlink:       link_readlink,
-        follow_link:    link_follow_link
+        .readlink=       link_readlink,
+        .follow_link=    link_follow_link,
 };
 
 
@@ -576,7 +582,6 @@ int init_chos(void)
   struct chos_proc *procs;
   size_t psize;
   int retval=0;
-
 
   ch=(struct chos *)kmalloc(sizeof(struct chos),GFP_KERNEL);
   if (ch==NULL){
@@ -780,6 +785,18 @@ int init_do_fork(void)
   unsigned char *end=(unsigned char *)END_ADD;
   long *lptr;
   long diff;
+  int i;
+
+  ptr=(unsigned char *)START_ADD;
+
+#ifdef LENGTH
+  for (i=0;i<LENGTH;i++,ptr++){
+    if (*ptr!=opcode[i]){
+      printk("Mismatch to trap do_fork %x %x\n",*ptr,opcode[i]);
+      return -1;
+    }
+  }
+#endif
 
   ptr=(unsigned char *)START_ADD;
 
@@ -887,6 +904,7 @@ int jumper(unsigned long clone_flags,
     printk("You shouldn't see this!!!\n");
     printk("You shouldn't see this!!!\n");
     printk("You shouldn't see this!!!\n");
+    return 0;
 }
 #endif
 
