@@ -1,6 +1,6 @@
 %define module chos
 %define version 0.07
-%define release 2
+%define release 3
 
 #
 # DKMS is a utility for managing modules outside of the kernel.
