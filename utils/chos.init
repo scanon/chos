@@ -110,7 +110,7 @@ mountlocal() {
 unmountlocal() {
 	export LANG=C
 
-	grep chos /proc/mounts| grep -v autofs|sort -r +1| \
+	grep chos /proc/mounts| grep -v autofs|sort -r -k 2,2| \
 	awk '{
 	  printf "/bin/umount %s\n",$2;
 	}'|sh
