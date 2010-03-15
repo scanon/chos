@@ -105,6 +105,9 @@ mountlocal() {
 		if ($0 ~ /swap/){next;}
 		printf "if [ ! -e \"/chos/local%s\" ] ; then mkdir /chos/local%s; fi;mount -t %s -o %s %s /chos/local%s\n",$2,$2,$3,$4,$1,$2
 	}'|sh
+	mount --bind /dev /chos/dev
+	mount --bind /dev/pts /chos/dev/pts
+	mount --bind /dev/shm /chos/dev/shm
 }
 
 unmountlocal() {
