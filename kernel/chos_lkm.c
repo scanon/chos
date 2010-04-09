@@ -58,6 +58,7 @@
 #include <linux/string.h>
 #include <linux/version.h>
 #include <linux/proc_fs.h> /* contains all procfs methods signature */
+#include <linux/err.h>
 #include <linux/list.h>
 #include <linux/vmalloc.h>
 #include <asm/unistd.h>
@@ -265,6 +266,10 @@ struct chos_link * lookup_link(struct task_struct *t)
   struct chos_link *link;
   struct chos_proc *p;
 
+  if (t==NULL){
+    return NULL;
+  }
+
   if (t->pid==0 || t->pid==1){
     return NULL;
   }
@@ -352,6 +357,8 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
     printk("Attempt to use invalid path. uid=%d %s\n",current->uid,text);
     return -ENOENT;
   }
+//  printk("%s: is_valid_path: %d\n",text,is_valid_path(text));
+//  printk("uid: %d euid: %d suid:%d fsuid:%d\n",current->uid,current->euid,current->suid,current->fsuid);
   MOD_INC;
   cleanup_links();
   link=create_link(text);
@@ -543,18 +550,18 @@ static int link_readlink(struct dentry *dentry, char *buffer, int buflen)
  * It calls lookup_link to resolve the link target.
  */
 
-static int link_follow_link(struct dentry *dentry, struct nameidata *nd)
+static void * link_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
   struct chos_link *link;
   char *text;
-  int ret;
+  void *ret;
 
   link=lookup_link(current);
   if (link==NULL)
     text=DEFAULT;
   else
     text=link->text;
-  ret=vfs_follow_link(nd,text);
+  ret=ERR_PTR(vfs_follow_link(nd,text));
   return ret;
 }
 
@@ -747,7 +754,9 @@ void cleanup_module(void)
 {
 
 #ifdef WRAP_DOFORK
-  cleanup_do_fork();
+  if (ch->fork_wrapped){
+    cleanup_do_fork();
+  }
 #endif
 #ifdef SCT
   sys_call_table[__NR_exit]=orig_sys_exit;
