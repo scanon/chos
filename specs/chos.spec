@@ -124,7 +124,10 @@ fi
 
 %post
 
-%if %{usedkms}
+# I'm disabling this for now.  Notice I added a _skip to the variable name.  If weak-modules gets fixed
+# at some point we can revisit this.
+#
+%if %{usedkms_skip}
 dkms add -m %{module} -v %{version} --rpm_safe_upgrade
 
 # Load tarballs as necessary
