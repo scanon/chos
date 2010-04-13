@@ -5,7 +5,7 @@ m6_define(PROJECT_NAME,  [CHOS])
 m4_define(PROJECT_EMAIL, [chos@nersc.gov])
 m4_define(PROJECT_TAR,   [chos])
 m4_define(PROJECT_MAJOR, 0)
-m4_define(PROJECT_MINOR, 7)
+m4_define(PROJECT_MINOR, 9)
 m4_define(PROJECT_MICRO, 0)
 
 AC_INIT(utils/chos.c)
@@ -19,7 +19,7 @@ dnl AC_HEADER_DIRENT
 #AC_CONFIG_SRCDIR(kernel/chos_lkm.c)
 AC_CONFIG_AUX_DIR(config)
 
-AM_INIT_AUTOMAKE(CHOS,0.07)
+AM_INIT_AUTOMAKE(CHOS,0.09)
 
 AM_CONFIG_HEADER(config.h)
 

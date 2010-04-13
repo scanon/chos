@@ -6,7 +6,7 @@
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
-#define MY_MODULE_VERSION "0.07"
+#define MY_MODULE_VERSION "0.09"
 
 /*
  * chos, Linux Kernel Module.
@@ -48,6 +48,8 @@
  *         -- Use start_time to confirm validity of cache
  *         -- Don't allow write if not euid==0
  *  0.03 - Support for 2.6
+ *  0.08 - Fix for follow_link to use ERR_PTR macro
+ *  0.09 - Remove exception for root in setting the link
  *
  */
 
@@ -353,8 +355,8 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
 	  return -ENOMEM;
   }
 
-  if (!is_valid_path(text) && current->uid!=0){
-    printk("Attempt to use invalid path. uid=%d %s\n",current->uid,text);
+  if (!is_valid_path(text)){
+    printk("Attempt to use invalid path. uid=%d (Requested %s)\n",current->uid,text);
     return -ENOENT;
   }
 //  printk("%s: is_valid_path: %d\n",text,is_valid_path(text));
