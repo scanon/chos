@@ -27,20 +27,33 @@
 # description: chos is used for supporting multiple installations concurrently
 #
 
+# source function library
+. /etc/rc.d/init.d/functions
+
 CONF=/etc/chos
+[ -f /etc/sysconfig/chos ] && . /etc/sysconfig/chos
 
 RETVAL=0
 
 start() {
-	echo -n $"Starting up chos: "
-
+	echo $"Starting up chos: "
+	echo -n $"Loading chos module: "
 	/sbin/modprobe chos &>/dev/null
-	makelinks	
-	mountlocal
-	RETVAL=$?
-	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/chos
+	[ $? ] && success || failure
 	echo
+
+	echo -n $"Creating chos structure: "
+	mountlocal
+	makelinks	
+	RETVAL=$?
+	[ $RETVAL ] && success || failure
+	[ $RETVAL ] && touch /var/lock/subsys/chos
+	echo
+
+	echo -n $"Loading valid OS directories: "
 	loadvalid
+	[ $? ] && success || failure
+	echo
 }
 
 stop() {
@@ -48,7 +61,8 @@ stop() {
 	unmountlocal
 	/sbin/modprobe -r chos &>/dev/null
 	RETVAL=$?
-	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/chos
+	[ $RETVAL ] && success || failure
+	[ $RETVAL ] && rm -f /var/lock/subsys/chos
 	echo
 }
 
@@ -99,24 +113,24 @@ loadvalid() {
 
 
 mountlocal() {
-	cat /etc/fstab| \
-	awk '{
-		if ($0 ~ /noauto/){next;}
-		if ($0 ~ /swap/){next;}
-		printf "if [ ! -e \"/chos/local%s\" ] ; then mkdir /chos/local%s; fi;mount -t %s -o %s %s /chos/local%s\n",$2,$2,$3,$4,$1,$2
-	}'|sh
-	mount --bind /dev /chos/dev
-	mount --bind /dev/pts /chos/dev/pts
-	mount --bind /dev/shm /chos/dev/shm
+	if [ ! -z "$BINDMOUNT" ] ; then
+		for d in $(echo $BINDMOUNT)
+		do
+			[ -d /chos/$d ] || mkdir /chos/$d
+			mount --bind $d /chos/$d
+		done
+	fi
 }
 
 unmountlocal() {
 	export LANG=C
 
-	grep chos /proc/mounts| grep -v autofs|sort -r -k 2,2| \
-	awk '{
-	  printf "/bin/umount %s\n",$2;
-	}'|sh
+	if [ ! -z "$BINDMOUNT" ] ; then
+		for d in $(echo $BINDMOUNT|sed 's/ /\n/g'|sort -r)
+		do
+			umount /chos/$d
+		done
+	fi
 }
 
 makelinks() {
@@ -124,8 +138,7 @@ makelinks() {
   do
     if [ ! -e "/chos/$dir" ] ; then
       if [ ! -h "/chos/$dir" ] ; then
-        echo $dir
-        ln -s /local/$dir /chos/$dir
+        ln -s /proc/chos/link/$dir /chos/$dir
       fi
     fi
   done

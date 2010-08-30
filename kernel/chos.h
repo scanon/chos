@@ -90,6 +90,7 @@ struct chos {
 	struct proc_dir_entry *dir; /* pseudo file entries */
 	struct chos_proc *procs;
 	struct nameidata named;
+	struct nameidata nochroot;
 	int fork_wrapped;
 };
 
