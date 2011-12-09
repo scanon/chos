@@ -3350,7 +3350,7 @@ else
   KERNEL_BASE=/lib/modules/`uname -r`/build
 fi;
 KERNEL_HDR="$KERNEL_BASE/include"
-if test ! -f "$KERNEL_HDR/linux/config.h"
+if test ! -f "$KERNEL_HDR/linux/autoconf.h"
 then
     echo "$as_me:$LINENO: result: not found" >&5
 echo "${ECHO_T}not found" >&6
@@ -3361,7 +3361,7 @@ else
     echo "$as_me:$LINENO: result: found in $KERNEL_HDR" >&5
 echo "${ECHO_T}found in $KERNEL_HDR" >&6
 fi
-KERNEL_VERSION=`$CC -E -dM -I$KERNEL_HDR $KERNEL_HDR/linux/version.h|$AWK '/UTS_RELEASE/ { print $3 }' \
+KERNEL_VERSION=`$CC -E -dM -I$KERNEL_HDR $KERNEL_HDR/linux/utsrelease.h|$AWK '/UTS_RELEASE/ { print $3 }' \
        | sed 's/"//g'`
 echo "$as_me:$LINENO: result: kernel version: $KERNEL_VERSION" >&5
 echo "${ECHO_T}kernel version: $KERNEL_VERSION" >&6
@@ -4114,6 +4114,7 @@ s,@RANLIB@,$RANLIB,;t t
 s,@CC_STATIC@,$CC_STATIC,;t t
 s,@KERNEL_BASE@,$KERNEL_BASE,;t t
 s,@KERNEL_HDR@,$KERNEL_HDR,;t t
+s,@KERNEL_VERSION@,$KERNEL_VERSION,;t t
 s,@MODULES_DIR@,$MODULES_DIR,;t t
 s,@BUILD_KERNEL@,$BUILD_KERNEL,;t t
 s,@FAKEROOT@,$FAKEROOT,;t t

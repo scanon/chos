@@ -13,23 +13,38 @@ if [ -e "$INC" ] ; then
 fi
 touch "$INC"
 if  [ -e $SM ] ; then 
-  address=`grep do_fork $SM|grep -v idle|sed 's/ .*//'`
+  address=`grep do_fork$ $SM|grep -v idle|sed 's/ .*//'`
   if [ -e $KB ] ; then
-    end=`objdump -d $KB|grep -A5 "^$address"|tail -1|sed 's/:.*//'`
+
+    # TODO: Needs review
+    # ffffffff8106a760:       55                      push   %rbp
+    # ffffffff8106a761:       48 89 e5                mov    %rsp,%rbp
+    # ffffffff8106a764:       48 81 ec f0 00 00 00    sub    $0xf0,%rsp
+    # ffffffff8106a76b:       48 89 5d d8             mov    %rbx,-0x28(%rbp)
+    # ffffffff8106a76f:       4c 89 65 e0             mov    %r12,-0x20(%rbp)
+    # ffffffff8106a773:       4c 89 6d e8             mov    %r13,-0x18(%rbp)
+    # ffffffff8106a777:       4c 89 75 f0             mov    %r14,-0x10(%rbp)
+    # ffffffff8106a77b:       4c 89 7d f8             mov    %r15,-0x8(%rbp)
+    # ffffffff8106a77f:       e8 7c 06 fa ff          callq  0xffffffff8100ae00
+    # ffffffff8106a784:       65 48 8b 04 25 28 00    mov    %gs:0x28,%rax
+    # ffffffff8106a78b:       00 00
+    # ffffffff8106a78d:       48 89 45 c8             mov    %rax,-0x38(%rbp)
+    # ffffffff8106a791:       31 c0                   xor    %eax,%eax
+    end=`objdump -d $KB|grep -A8 "^$address"|tail -1|sed 's/:.*//'`
     echo "#define START_ADD  0x$address" > $INC
       echo "#define END_ADD    0x$end" >> $INC
   else
     if [ -e $KB.gz ] ; then
       zcat $KB.gz > ./vmlinux
-      end=`objdump -d ./vmlinux|grep -A5 "^$address"|tail -1|sed 's/:.*//'`
+      end=`objdump -d ./vmlinux|grep -A8 "^$address"|tail -1|sed 's/:.*//'`
       rm ./vmlinux
       echo "#define START_ADD  0x$address" > $INC
       echo "#define END_ADD    0x$end" >> $INC
     else
       echo "#define START_ADD  0x$address" > $INC
       if [ $(uname -m|grep -c x86_64) -gt 0 ] ; then
-        echo "#define LENGTH    0xC" >> $INC
-        echo 'unsigned char opcode[] =   "\x41\x57\x49\x89\xd7\x41\x56\x49\x89\xce\x41\x55";' >> $INC
+        echo "#define LENGTH    0x1f" >> $INC
+        echo 'unsigned char opcode[] =   "\x55\x48\x89\xe5\x48\x81\xec\xb0\x00\x00\x00\x48\x89\x5d\xd8\x4c\x89\x65\xe0\x4c\x89\x6d\xe8\x4c\x89\x75\xf0\x4c\x89\x7d\xf8";' >> $INC
       else
         echo "#define LENGTH    0x6" >> $INC
         echo 'unsigned char opcode[] =   "\x55\x89\xcd\x57\x89\xc7\x56";' >> $INC
@@ -38,5 +53,11 @@ if  [ -e $SM ] ; then
   fi
   CHROOT=`grep ' sys_chroot' $SM | awk '{print $1}'`
   echo "asmlinkage long (*sys_chroot)(const char __user *filename)=(void *)0x$CHROOT;" >>$INC
+  
+  # find_task_by_pid_ns and tasklist_lock are not exported
+  FIND_PID=`grep ' find_task_by_pid_ns$' $SM | awk '{print $1}'`
+  TASKLIST_LOCK=`grep ' tasklist_lock$' $SM | awk '{print $1}'`
+  echo "struct task_struct* (*s_find_task_by_pid_ns)(pid_t nr, struct pid_namespace *ns)=(void *)0x$FIND_PID;" >>$INC;
+  echo "rwlock_t *tasklist_lock_p = (rwlock_t *)0x$TASKLIST_LOCK;" >>$INC;
 
 fi

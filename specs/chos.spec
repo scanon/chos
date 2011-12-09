@@ -7,6 +7,7 @@
 # It can be obtained from http://linux.dell.com/dkms/dkms.html
 # Set the value to 1 if you plan to use dkms.
 %define usedkms 1
+%define usedkms_skip 0
 # Optionally, you can distribute a pre-built binary tar file with the
 # rpm.  The systems wouldn't need the kernel source then.
 %define withdkmstarfile 0

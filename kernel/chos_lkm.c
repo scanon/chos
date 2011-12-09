@@ -69,8 +69,10 @@
 #include <asm/pgtable.h>
 #include <linux/list.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,99)
+#include <linux/fs_struct.h>
 #include <linux/moduleparam.h>
 #include <linux/namei.h>
+#include <linux/nsproxy.h>
 #endif
 #include <asm/desc.h>
 
@@ -121,6 +123,9 @@ int save_state=0;
 #if defined(START_ADD) && defined(LENGTH)
 #define WRAP_DOFORK
 #define END_ADD (START_ADD+LENGTH)
+#endif
+
+#ifdef WRAP_DOFORK
 int init_do_fork(void);
 void cleanup_do_fork(void);
 #endif
@@ -135,18 +140,18 @@ void my_sys_exit_group(int error_code);
 
 /* declarations */
 int is_valid_path(const char *path);
-int chos_do_fork(unsigned long clone_flags,
+long chos_do_fork(unsigned long clone_flags,
             unsigned long stack_start,
             struct pt_regs *regs,
             unsigned long stack_size,
-            int *parent_tidptr,
-            int *child_tidptr);
-int jumper(unsigned long clone_flags,
+            int __user *parent_tidptr,
+            int __user *child_tidptr);
+long jumper(unsigned long clone_flags,
             unsigned long stack_start,
             struct pt_regs *regs,
             unsigned long stack_size,
-            int *parent_tidptr,
-            int *child_tidptr);
+            int __user *parent_tidptr,
+            int __user *child_tidptr);
 
 /*
  * This allocates and fills the chos_link structure.  This is typically
@@ -206,10 +211,11 @@ void reset_link(struct chos_proc *p)
 void set_link(struct chos_link *link, struct task_struct *t)
 {
   struct chos_proc *p;
+  pid_t global_pid = task_pid_nr(t);
 
-  BUG_ON(t->pid > ch->pid_max);
+  BUG_ON(global_pid > ch->pid_max);
 
-  p=&(ch->procs[t->pid]);
+  p=&(ch->procs[global_pid]);
 
   read_lock(&(p->lock));
   if (p->link!=NULL){
@@ -241,9 +247,9 @@ void cleanup_links(void)
   int i;
   struct task_struct *t;
 
-  write_lock_irq(&tasklist_lock);
+  write_lock_irq(tasklist_lock_p);
   for (i=0;i<ch->pid_max;i++){
-    t=find_task_by_pid(i);
+    t=s_find_task_by_pid_ns(i,current->nsproxy->pid_ns);
     if (ch->procs[i].link!=NULL && t==NULL){
       reset_link(&(ch->procs[i]));
       count++;
@@ -253,7 +259,7 @@ void cleanup_links(void)
       count++;
     }
   }
-  write_unlock_irq(&tasklist_lock);
+  write_unlock_irq(tasklist_lock_p);
 }
 
 
@@ -302,7 +308,11 @@ int is_chrooted(void)
 
 //  if (strcmp(dentry->d_name.name,"chos")==0){
 // Already chrooted
-  if (ch->named.mnt==current->fs->rootmnt && ch->named.dentry->d_inode==current->fs->root->d_inode){
+
+/* Moved to struct path by 4ac9137858e08a19f29feac4e1f4df7c268b0ba5
+ * http://lwn.net/Articles/206758/
+ */
+  if (ch->named.path.mnt==current->fs->root.mnt && ch->named.path.dentry->d_inode==current->fs->root.dentry->d_inode){
     retval=1;
   }
   return retval;
@@ -310,18 +320,22 @@ int is_chrooted(void)
 
 int my_chroot(void)
 {
-  int capback;
+  kernel_cap_t capback;
   int retval;
   mm_segment_t mem;
 
-  capback=current->cap_effective;
-  cap_raise(current->cap_effective,CAP_SYS_CHROOT);
+  capback=current->cred->cap_effective;
+  /*
+   * TODO: This code for changing cap_effective appears to work, but
+   * looks too ugly to be the right way to do it 
+   */
+  cap_raise(*(kernel_cap_t *)&(current->cred->cap_effective),CAP_SYS_CHROOT);
   mem=get_fs(); 
   set_fs(KERNEL_DS);
   if ((retval=sys_chroot(CHOSROOT))!=0){
     printk("chroot failed\n");
   }
-  current->cap_effective=capback;
+  (*(kernel_cap_t *)&current->cred->cap_effective)=capback;
   set_fs(mem);
   return retval;
 }
@@ -356,7 +370,7 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
   }
 
   if (!is_valid_path(text)){
-    printk("Attempt to use invalid path. uid=%d (Requested %s)\n",current->uid,text);
+    printk("Attempt to use invalid path. uid=%d (Requested %s)\n",current->cred->uid,text);
     return -ENOENT;
   }
 //  printk("%s: is_valid_path: %d\n",text,is_valid_path(text));
@@ -472,7 +486,7 @@ int write_valid(struct file* file, const char* buffer, unsigned long count, void
   char *path;
   int i;
 
-  if (current->euid!=0){
+  if (current->cred->euid!=0){
     return -EPERM;
   }
   if (buffer[0]=='-'){
@@ -598,7 +612,10 @@ int init_chos(void)
     return -1;
   }
 
-  retval=path_lookup(CHOSROOT, LOOKUP_FOLLOW | LOOKUP_DIRECTORY | LOOKUP_NOALT,&(ch->named)); 
+  // TODO: Find out *why* was LOOKUP_NOALT was removed in
+  // 7f2da1e7d0330395e5e9e350b879b98a1ea495df and what the
+  // implications are
+  retval=path_lookup(CHOSROOT, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,&(ch->named)); 
   
   if (max>0)
     ch->pid_max=max;
@@ -777,7 +794,7 @@ void cleanup_module(void)
    * leave them around.
    */
   if (!save_state){
-    path_release(&(ch->named));
+    path_put(&(ch->named).path);
     vfree(ch->procs);
     kfree(ch);
   }
@@ -872,22 +889,22 @@ void cleanup_do_fork(void)
 /* These are the first couple of lines from the patched mmap.c */
 /* Do the new checks and then call the jumper function         */
 
-int chos_do_fork(unsigned long clone_flags,
+long chos_do_fork(unsigned long clone_flags,
             unsigned long stack_start,
             struct pt_regs *regs,
             unsigned long stack_size,
-            int *parent_tidptr,
-            int *child_tidptr)
+            int __user *parent_tidptr,
+            int __user *child_tidptr)
 {
   struct task_struct *t;
-  int pid;
+  long pid;
 
   pid=jumper(clone_flags, stack_start, regs, stack_size, 
 		parent_tidptr, child_tidptr); 
   if ( pid > 0){
-    write_lock_irq(&tasklist_lock);
-    t=find_task_by_pid(pid);
-    write_unlock_irq(&tasklist_lock);
+    write_lock_irq(tasklist_lock_p);
+    t=s_find_task_by_pid_ns(pid,current->nsproxy->pid_ns);
+    write_unlock_irq(tasklist_lock_p);
     lookup_link(t);
   }
   else{
@@ -898,12 +915,12 @@ int chos_do_fork(unsigned long clone_flags,
 }
 
 
-int jumper(unsigned long clone_flags,
+long jumper(unsigned long clone_flags,
             unsigned long stack_start,
             struct pt_regs *regs,
             unsigned long stack_size,
-            int *parent_tidptr,
-            int *child_tidptr)
+            int __user *parent_tidptr,
+            int __user *child_tidptr)
 {
    /* These are place holder instructions to give plenty of room.
     * They should never be called.  If the do get called, something
