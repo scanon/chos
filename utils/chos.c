@@ -25,7 +25,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <linux/sched.h>
 #include <pwd.h>
+#include <sys/mount.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -40,6 +42,7 @@ char * check_chos(char *name);
 char ** set_env();
 
 #define MAXLINE 80
+
 
 int main(int argc, char *argv[])
 {
@@ -59,8 +62,8 @@ int main(int argc, char *argv[])
    }
    os=check_chos(osenv);
    if (os==NULL && strcmp(osenv,DEFAULT)){
-     fprintf(stderr,"Warning: The requested os is not recognized.  Trying anyway.\n");
-     os=osenv;
+     fprintf(stderr,"Error: The requested os is not recognized.  Aborting.\n");
+     return 1;
    }
 
    pw=getpwuid(getuid());
@@ -69,18 +72,17 @@ int main(int argc, char *argv[])
      return -2;
    }
 
-   if (os && get_multi(chos)!=0){
-     fprintf(stderr,"Failed to read the chroot OS system link.\nPerhaps the system isn't fully configured.\n");
-     return -3;
-   }
-
 /* If the current chos is different from the requested chos then update it */
    if (os && strncmp(chos,os,MAX_OS)!=0 && set_multi(os)!=0){
      fprintf(stderr,"Failed to set chroot OS system link.\nPerhaps there is a permission problem.\n");
      return -3;
    }
 
-   setuid(getuid());
+   if(setuid(getuid())!=-0) {
+       perror("setuid");
+       return(1);
+   }
+
    if (argc==1){
       newenv=set_env();
       if (newenv==NULL){
@@ -122,35 +124,55 @@ int is_chrooted(char *chos)
  */
 int set_multi(char *os)
 {
-   FILE *stream;
-   stream=fopen(SETCHOS,"w");
-   if (stream==NULL){
-     fprintf(stderr,"Unable to open multi root system\n");
-     return -3;
-   }
-   if (fprintf(stream,os)==-1){
-     fprintf(stderr,"Unable to write to multi root system\n");
-     return -3;
-   }
-   fclose(stream);
+  if((unshare(CLONE_NEWNS)!=0)) {
+    perror("clone");
+    return(1);
+  }
+
+  if((mount_dirs(local_dirs,"/local") || mount_dirs(chos_dirs,os))!=0) {
+    perror("mount_dirs");
+    return 1;
+  }
+
+  if(chroot(chos_root)!=0) {
+    perror("chroot");
+    return 1;
+  }
+
+   fprintf(stderr,"Chroot complete.\n");
    return 0;
 }
 
-/*
- * Simple function to get the target of the chos link
- */
-int get_multi(char *os)
-{
-   int len;
-   len=readlink(LINKCHOS,os,MAX_OS);
-   if (len<1){
-     return -3;
-   }
-   else{
-     os[len]=0;
-   }
-   return 0;
+int mount_dirs(char **chos_dir, char *prefix) {
+
+  do {
+    int src_len = strlen(*chos_dir)+strlen(prefix)+1;
+    int target_len = strlen(*chos_dir)+strlen(chos_root)+1;
+
+    char *src_path = (char *)malloc(sizeof(char)*(src_len+1));
+    char *target_path = (char *)malloc(sizeof(char)*(target_len+1));
+
+    snprintf(src_path,src_len+1,"%s/%s",prefix,*chos_dir);
+    snprintf(target_path,target_len+1,"%s/%s",chos_root,*chos_dir);
+
+    fprintf(stderr,"%s on %s\n",src_path,target_path);
+
+    /* TODO: MS_NODEV and MS_NOSUID do not appear to work here */
+    if(mount(src_path,target_path,"bind", MS_BIND|MS_NODEV|MS_NOSUID|MS_RDONLY,NULL)!=0) {
+       perror("mount");
+       return 1;
+     }
+
+    free(src_path);
+    free(target_path);
+
+    chos_dir+=1;
+  } while (*chos_dir);
+
+  return 0;
+
 }
+
 
 /*
  * This function looks at the /etc/chos.conf file and sets variables
@@ -187,12 +209,12 @@ char ** set_env()
       continue; 
 /* Remove new line */
     while(*value!=0 && *value!='\n')
-	value++;
+    value++;
     *value=0;
     if (start){
       count++;
       if (buffer[0]=='%')
-	break;
+  break;
     }
     else if (strcmp(buffer,ENVHEAD)==0){
       start=1;
@@ -215,12 +237,12 @@ char ** set_env()
       continue; 
 /* Remove new line */
     while(*value!=0 && *value!='\n')
-	value++;
+    value++;
     *value=0;
     if (start){
       count++;
       if (buffer[0]=='%')
-	break;
+    break;
       value=getenv(buffer);
       if (strcmp(buffer,"PATH")==0){
         env[setc]=DEFPATH;
@@ -296,14 +318,14 @@ char * check_chos(char *name)
       continue; 
 /* Remove new line */
     while(*path!=0 && *path!='\n')
-	path++;
+    path++;
     *path=0;
     if (start){
       if (buffer[0]=='%')
-	break;
+        break;
       path=buffer;
       while (*path!=':' && *path!=0){
-	path++;
+        path++;
       }
       if (*path==0){
 /*        fprintf(stderr,"Invalid line in chos config file: %s.\n",buffer); */

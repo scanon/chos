@@ -31,3 +31,38 @@
 #define ENVHEAD "%ENV"
 
 #define MAX_OS 80
+
+const char *chos_dirs[] = {
+	"bin",
+	"boot",
+	"etc",
+	"lib",
+	"lib32",
+	"lib64",
+	"opt",
+	"sbin",
+	"usr",
+	"var",
+    NULL
+};
+
+const char *local_dirs[] = {
+    "chos2",
+    "chos",
+    "dev",
+    "dev/pts",
+    "dev/shm",
+    "export",
+    "local",
+    "media",
+    "mnt",
+    "os",
+    "proc",
+    "root",
+    "srv",
+    "sys",
+    "tmp",
+    NULL
+};
+
+const char *chos_root = "/chos2";
