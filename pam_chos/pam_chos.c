@@ -51,16 +51,9 @@
 #include <pwd.h>
 #include <fcntl.h>
 
-#include "pam_chos.h"
 #include "../config.h"
+#include "../chos.h"
 
-int set_multi(char *os);
-char * check_chos(char *name);
-int read_chos_file(char *dir,char *osenv,int max);
-
-#define	CONFIG	".chos"
-#define MAX_LEN 256
-#define MAXLINE 80
 PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
 				   int argc, const char **argv)
 {
@@ -115,8 +108,8 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     usedefault=1;  
   }
   else if (os==NULL){
-    syslog(LOG_WARNING,"Warning: requested os (%s) is not recognized\n",osenv);
-    os=osenv;  /* Let's try it just in case */
+    syslog(LOG_ERR,"Error: requested os (%s) is not recognized\n",osenv);
+    return ret;
   }
   
   if (usedefault==0 && set_multi(os)!=0){
@@ -153,110 +146,3 @@ struct pam_module _pam_chos_modstruct = {
 };
 #endif
 
-
-/* This writes the target into the chos kernel module */
-int set_multi(char *os)
-{
-   FILE *stream;
-   stream=fopen(SETCHOS,"w");
-   if (stream==NULL){
-     syslog(LOG_ERR,"Unable to open multi root system\n");
-     return -3;
-   }
-   if (fprintf(stream,os)==-1){
-     syslog(LOG_ERR,"Unable to write to multi root system\n");
-     return -3;
-   }
-   fclose(stream);
-   return 0;
-}
-
-
-/* This looks up the path for the alias specified in the users chos file.
- */
-char * check_chos(char *name)
-{
-  FILE *cfile;
-  static char buffer[MAXLINE];
-  struct stat st;
-  char *path;
-  char *retpath=NULL;
-  int start=0;
-  int han;
-
-  cfile=fopen(CHOSCONF,"r");
-  if (cfile==NULL){
-    syslog(LOG_ERR,"Error opening config file %s\n",CHOSCONF);
-    return NULL;
-  }
-  han=fileno(cfile);
-  if (fstat(han,&st)!=0){
-    syslog(LOG_ERR,"Error accessing config file %s\n",CHOSCONF);
-    return NULL;
-  }
-  else if (st.st_uid!=0){
-    syslog(LOG_ERR,"Error: %s must be owned by root\n",CHOSCONF);
-    return NULL;
-  }
-  start=0;
-  while(retpath==NULL){
-    path=fgets(buffer,MAXLINE,cfile);
-    if (path==NULL)
-      break;
-    if (buffer[0]=='#' || buffer[0]=='\n')
-      continue;
-/* Remove new line */
-    while(*path!=0 && *path!='\n')
-        path++;
-    *path=0;
-    if (start){
-      if (buffer[0]=='%')
-        break;
-      path=buffer;
-      while (*path!=':' && *path!=0){
-        path++;
-      }
-      if (*path==0){
-/*        fprintf(stderr,"Invalid line in chos config file: %s.\n",buffer); */
-        continue;
-      }
-      *path=0;
-      path++;
-      if (strcmp(buffer,name)==0){
-        retpath=path;
-        break;
-      }
-    }
-    else if (strcmp(buffer,SHELLHEAD)==0){
-      start=1;
-    }
-  }
-  fclose(cfile);
-  return retpath;
-}
-
-int read_chos_file(char *dir,char *osenv,int max)
-{
-  int conf;
-  int i;
-  int count=0;
-  char userfile[MAX_LEN+1];
-
-  sprintf(userfile,"%.100s/%.5s",dir,CONFIG);
-  conf=open(userfile,O_RDONLY);
-  if (conf>=0){
-    count=read(conf,osenv,MAXLINE-1);
-    osenv[count]=0;
-    close(conf);
-  }
-  if (count==0){
-    strcpy(osenv,DEFAULT);
-    count=7;
-  }
-
-  for (i=0;i<count;i++){
-    if (osenv[i]=='\n')break;
-  }
-  osenv[i]=0;
-  return count;
-}

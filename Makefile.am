@@ -1,2 +1,2 @@
-SUBDIRS=utils conf kernel pam_chos
+SUBDIRS=chos conf pam_chos
 

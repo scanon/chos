@@ -6,7 +6,7 @@ include ../Make.Rules
 TITLE=pam_chos
 
 LIBFILES = $(TITLE)
-LIBSRC = $(addsuffix .c,$(LIBFILES))
+LIBSRC = $(addsuffix .c,$(LIBFILES)) ../chos/chos_multi.c
 LIBOBJ = $(addsuffix .o,$(LIBFILES))
 
 LINK_PAMMODUTILS = -lpam

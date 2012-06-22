@@ -23,46 +23,40 @@
  *
  */
 
-
-#define SETCHOS "/proc/chos/setchos"
-#define RESETCHOS "/proc/chos/resetchos"
-#define LINKCHOS "/proc/chos/link"
-
-#define ENVHEAD "%ENV"
-
+#define MAXLINE 80
 #define MAX_OS 80
+#define ENVHEAD "%ENV"
+#define	CONFIG	".chos"
+#define MAX_LEN 256
 
-const char *chos_dirs[] = {
-	"bin",
-	"boot",
-	"etc",
-	"lib",
-	"lib32",
-	"lib64",
-	"opt",
-	"sbin",
-	"usr",
-	"var",
-    NULL
-};
+int set_multi();
+char *check_chos(char *name);
+char **set_env();
+int read_chos_file(char *dir,char *osenv,int max);
+void chos_err(char *msg, ...);
 
-const char *local_dirs[] = {
-    "chos2",
-    "chos",
-    "dev",
-    "dev/pts",
-    "dev/shm",
-    "export",
-    "local",
-    "media",
-    "mnt",
-    "os",
-    "proc",
-    "root",
-    "srv",
-    "sys",
-    "tmp",
-    NULL
-};
 
-const char *chos_root = "/chos2";
+typedef struct chos_dir {
+    char *src;
+    char *dest;
+    struct chos_dir *next;
+} chos_dir;
+
+typedef struct chos_env {
+    char *name;
+    char *config_file;
+    chos_dir *dirs;
+    struct chos_env *next;
+} chos_env;
+
+chos_env *create_chos_env(char *name);
+chos_dir *create_chos_dir(char *src, char *dest);
+chos_env *chos_get_env(char *env_name);
+void chos_append_dir(chos_dir *dir, char *src, char *dest);
+int chos_append_env(char *name);
+int chos_populate_dirs(chos_env *env);
+
+static const char *chos_root = "/chos2/";
+static const char *chos_config_prefix = "/etc/chos.d/";
+static const int chos_debug_flag = 0;
+

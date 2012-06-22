@@ -37,51 +37,84 @@
 #include "../config.h"
 #include "../chos.h"
 
-const char *chos_dirs[] = {
-	"bin",
-	"boot",
-	"etc",
-	"lib",
-	"lib32",
-	"lib64",
-	"opt",
-	"sbin",
-	"usr",
-	"var",
-    NULL
-};
 
-const char *local_dirs[] = {
-    "chos2",
-    "chos",
-    "dev",
-    "dev/pts",
-    "dev/shm",
-    "export",
-    "home",
-    "local",
-    "media",
-    "mnt",
-    "os",
-    "proc",
-    "root",
-    "srv",
-    "sys",
-    "tmp",
-    NULL
-};
+chos_env *env_root = NULL;
 
-const char *chos_root = "/chos2";
+void chos_debug(char *msg, ...) {
+    va_list argv;
+    va_start(argv,msg);
+    //vsyslog(LOG_ERR,msg,argv);
+    if(chos_debug_flag) 
+      chos_err(msg,argv);
+    va_end(argv);
+}
 
 void chos_err(char *msg, ...) {
     va_list argv;
     va_start(argv,msg);
-    vsyslog(LOG_ERR,msg,argv);
+    //vsyslog(LOG_ERR,msg,argv);
+    vfprintf(stderr,msg,argv);
     va_end(argv);
 }
 
-int configure_chos()
-{
+int configure_chos() {
+  if(!(env_root = create_chos_env("root"))) {
+      chos_err("Failed to initialize CHOS.\n");
+      return 0;
+  }
+  return 1;
+}
+
+int chos_append_env(char *name) {
+  chos_env *env = env_root;
+  while(env->next) {
+    env = env->next;
+  }
+  if(!(env->next = create_chos_env(name))) {
+      chos_err("Failed to build environment %s.\n",name);
+      return 0;
+  }
+  return 1;
+}
+
+void chos_append_dir(chos_dir *dir, char *src, char *dest) {
+  while(dir->next) {
+    dir = dir->next;
+  }
+  dir->next = create_chos_dir(src,dest);
+}
+
+chos_dir *create_chos_dir(char *src, char *dest) {
+  chos_dir *dir = (chos_dir *)malloc(sizeof(chos_dir));
+  dir->next = NULL;
+  dir->src = (char *)malloc(sizeof(char)*(strlen(src)+1));
+  dir->dest = (char *)malloc(sizeof(char)*(strlen(dest)+1));
+  strncpy(dir->src,src,strlen(src)+1);
+  strncpy(dir->dest,dest,strlen(dest)+1);
+  return dir;
+}
+
+
+chos_env *create_chos_env(char *name) {
+
+  int conf_path_len=strlen(chos_config_prefix)+strlen(name);
+
+  chos_env *env = (chos_env *)malloc(sizeof(chos_env));
+
+  env->name = (char *)malloc(sizeof(char)*(strlen(name)+1));
+  strncpy(env->name, name, strlen(name)+1);
+
+  env->config_file = (char *)malloc(sizeof(char)*(conf_path_len+1));
+  strncpy(env->config_file, chos_config_prefix, conf_path_len+1);
+  strncat(env->config_file, name, strlen(name));
+
+  if(!(chos_populate_dirs(env))) {
+    chos_err("Failed to read configuration for environment \"%s\".\n",env->name);
+    return NULL;
+  }
+
+  env->next = NULL;
+  return env;
 }
 
 int is_chrooted(char *chos)
@@ -96,17 +129,54 @@ int is_chrooted(char *chos)
     return 1;
 }
 
+/* Return the environment with name env_name,
+ * or NULL if no such environment exists.
+ */
+chos_env *chos_get_env(char *env_name) {
+    chos_env *env = env_root;
 
-/* Simple function to set the chos link
+    do {
+        if (strcmp(env_name,env->name)==0) {
+            return env;
+        }
+        else {
+            chos_debug("Info: Environment %s did not match %s.\n",env->name, env_name);
+        }
+        env = env->next;
+    } while (env != NULL);
+
+    return env;
+}
+
+
+/* Set the CHOS environment
  */
 int set_multi(char *os)
 {
+
+  if(!os) {
+    chos_err("Invalid environment name.\n");
+    return(1);
+  }
+
+  if(!env_root) {
+    chos_err("CHOS not configured (did you run configure_chos()?)\n");
+    return(1);
+  }
+
+  chos_env *env = chos_get_env(os);
+
+  if(!env) {
+    chos_err("Environment %s not found.\n",os);
+    return(1);
+  }
+
   if((unshare(CLONE_NEWNS)!=0)) {
     perror("clone");
     return(1);
   }
 
-  if((mount_dirs(local_dirs,"/local") || mount_dirs(chos_dirs,os))!=0) {
+  if(mount_dirs(env,chos_root)!=0) {
     perror("mount_dirs");
     return 1;
   }
@@ -116,11 +186,34 @@ int set_multi(char *os)
     return 1;
   }
 
-   fprintf(stderr,"Chroot complete.\n");
+   chos_debug("Info: chroot complete env=%s chos_root=%s\n",env->name,chos_root);
    return 0;
 }
 
-int mount_dirs(char **chos_dir, char *prefix) {
+int mount_dirs(chos_env *env, char *chos_root) {
+    chos_debug("Info: enter mount_dirs env=%s chos_root=%s\n",env->name,chos_root);
+  chos_dir *dir = env->dirs;
+
+  while(dir) {
+    char *src = dir->src;
+    char *dest = dir->dest;
+
+    chos_debug("Info: %s on %s\n",src,dest);
+
+    /* TODO: MS_NODEV and MS_NOSUID do not appear to work here */
+    if(mount(src,dest,"bind", MS_BIND|MS_NODEV|MS_NOSUID|MS_RDONLY,NULL)!=0) {
+       perror("mount");
+       return 1;
+     }
+    chos_debug("Info: Completed %s on %s\n",src,dest);
+
+    dir = dir->next;
+  }
+
+  return 0;
+}
+
+int _mount_dirs(char **chos_dir, char *prefix) {
 
   do {
     int src_len = strlen(*chos_dir)+strlen(prefix)+1;
@@ -317,7 +410,69 @@ char *check_chos(char *name)
     }
   }
   fclose(cfile);
+  if(!chos_append_env(name)) {
+    chos_err("Failed to add environment \"%s\" to CHOS.\n",name);
+    return NULL;
+  }
   return retpath;
+}
+
+int chos_populate_dirs(chos_env *env)
+{
+  FILE *cfile;
+  static char buffer[MAXLINE];
+  char *src;
+  char *dest;
+  struct stat st;
+  char *line;
+  const char delim[] = " ";
+  int han;
+
+  cfile=fopen(env->config_file,"r");
+  if (cfile==NULL){
+    chos_err("Error opening config file %s\n",env->config_file);
+    return 0;
+  }
+  han=fileno(cfile);
+  if (fstat(han,&st)!=0){
+    chos_err("Error accessing config file %s\n",env->config_file);
+    return 0;
+  }
+  else if (st.st_uid!=0){
+    chos_err("Error: %s must be owned by root\n",env->config_file);
+    return 0;
+  }
+  while(line=fgets(buffer,MAXLINE,cfile)) {
+    //if (path==NULL)
+     // break;
+    if (buffer[0]=='#' || buffer[0]=='\n')
+      continue;
+
+    /* Strip new line character */
+    while(*line!=0 && *line!='\n')
+        line++;
+    *line=0;
+
+
+    src = strtok(buffer,delim);
+    dest = strtok(NULL,delim);
+
+    if(!src || !dest) {
+      chos_err("Invalid line in chos config file: %s.\n",buffer);
+      return 0;
+    }
+
+    if(env->dirs) {
+      chos_append_dir(env->dirs, src, dest);
+    }
+    else {
+      env->dirs = create_chos_dir(src,dest);
+    }
+
+  }
+
+  fclose(cfile);
+  return 1;
 }
 
 int read_chos_file(char *dir,char *osenv,int max)
@@ -330,7 +485,7 @@ int read_chos_file(char *dir,char *osenv,int max)
   sprintf(userfile,"%.100s/%.5s",dir,CONFIG);
   conf=open(userfile,O_RDONLY);
   if (conf>=0){
-    count=read(conf,osenv,MAXLINE-1);
+    count=read(conf,osenv,MAXLINE);
     osenv[count]=0;
     close(conf);
   }
