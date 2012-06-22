@@ -29,9 +29,9 @@
 #define	CONFIG	".chos"
 #define MAX_LEN 256
 
-int set_multi();
+int set_multi(char *os);
 char *check_chos(char *name);
-char **set_env();
+char **set_env(void);
 int read_chos_file(char *dir,char *osenv,int max);
 void chos_err(char *msg, ...);
 
