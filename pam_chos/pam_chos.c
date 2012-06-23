@@ -99,6 +99,12 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
       return onerr;
     }
   }
+
+   if(!(configure_chos())) {
+     chos_err("Failed to initialize %d CHOS.\n",getuid());
+     return -2;
+   }
+
   os=check_chos(osenv);
 
 /* We are using the default, but there isn't a default
@@ -112,7 +118,7 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     return ret;
   }
   
-  if (usedefault==0 && set_multi(os)!=0){
+  if (usedefault==0 && set_multi(osenv)!=0){
     syslog(LOG_ERR,"Failed to set OS to requested system.\n");
     return ret;
   }

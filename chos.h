@@ -52,9 +52,10 @@ typedef struct chos_env {
 chos_env *create_chos_env(char *name);
 chos_dir *create_chos_dir(char *src, char *dest);
 chos_env *chos_get_env(char *env_name);
-void chos_append_dir(chos_dir *dir, char *src, char *dest);
+int chos_append_dir(chos_env *env, char *src, char *dest);
 int chos_append_env(char *name);
 int chos_populate_dirs(chos_env *env);
+int configure_chos(void);
 
 static const char *chos_root = "/chos2/";
 static const char *chos_config_prefix = "/etc/chos.d/";

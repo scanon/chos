@@ -23,6 +23,8 @@
  *
  */
 
+#include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <linux/fs.h>
 #include <linux/sched.h>
@@ -43,25 +45,63 @@ chos_env *env_root = NULL;
 void chos_debug(char *msg, ...) {
     va_list argv;
     va_start(argv,msg);
-    //vsyslog(LOG_ERR,msg,argv);
+    /* vsyslog(LOG_ERR,msg,argv); */
     if(chos_debug_flag) 
-      chos_err(msg,argv);
+      vfprintf(stderr,msg,argv);
+      //chos_err(msg,argv);
     va_end(argv);
 }
 
 void chos_err(char *msg, ...) {
     va_list argv;
     va_start(argv,msg);
-    //vsyslog(LOG_ERR,msg,argv);
+    /* vsyslog(LOG_ERR,msg,argv); */
     vfprintf(stderr,msg,argv);
     va_end(argv);
 }
 
 int configure_chos() {
+  DIR *dir;
+  struct dirent *dirent;
+  unsigned char *type;
+
+  chos_debug("Info: Initializing CHOS\n");
+
   if(!(env_root = create_chos_env("root"))) {
-      chos_err("Failed to initialize CHOS.\n");
-      return 0;
+    chos_err("Failed to initialize CHOS.\n");
+    return 0;
   }
+
+
+  dir = opendir(chos_config_prefix);
+
+  if(!dir) {
+    chos_err("Failed to opendir %s: %s.\n",chos_config_prefix, strerror(errno));
+    return 0;
+  }
+
+  while(1) {
+    dirent = readdir(dir);
+
+    if(!dirent) {
+      chos_debug("Info: Done reading configs\n");
+      break;
+    }
+
+    if(dirent->d_type == DT_REG || dirent->d_type == DT_UNKNOWN) {
+      chos_debug("Info: Reading config %s.\n",dirent->d_name);
+
+      if(!chos_append_env(dirent->d_name)) {
+        chos_err("Failed to add environment \"%s\" to CHOS.\n",dirent->d_name);
+        return 1;
+      }
+
+    }
+    else {
+      chos_debug("Info: Skipping file %s.\n",dirent->d_name);
+    }
+  }
+
   return 1;
 }
 
@@ -77,20 +117,31 @@ int chos_append_env(char *name) {
   return 1;
 }
 
-void chos_append_dir(chos_dir *dir, char *src, char *dest) {
+int chos_append_dir(chos_env *env, char *src, char *dest) {
+  chos_dir *dir = env->dirs;
+
+  if(!dir) {
+    env->dirs = create_chos_dir(src,dest);
+    return 0;
+  }
   while(dir->next) {
     dir = dir->next;
   }
   dir->next = create_chos_dir(src,dest);
+  return 0;
 }
 
 chos_dir *create_chos_dir(char *src, char *dest) {
   chos_dir *dir = (chos_dir *)malloc(sizeof(chos_dir));
+
   dir->next = NULL;
+
   dir->src = (char *)malloc(sizeof(char)*(strlen(src)+1));
-  dir->dest = (char *)malloc(sizeof(char)*(strlen(dest)+1));
   strncpy(dir->src,src,strlen(src)+1);
+
+  dir->dest = (char *)malloc(sizeof(char)*(strlen(dest)+1));
   strncpy(dir->dest,dest,strlen(dest)+1);
+
   return dir;
 }
 
@@ -98,6 +149,8 @@ chos_dir *create_chos_dir(char *src, char *dest) {
 chos_env *create_chos_env(char *name) {
 
   int conf_path_len=strlen(chos_config_prefix)+strlen(name);
+
+  chos_debug("Info: Creating environment %s.\n",name);
 
   chos_env *env = (chos_env *)malloc(sizeof(chos_env));
 
@@ -117,12 +170,12 @@ chos_env *create_chos_env(char *name) {
   return env;
 }
 
-int is_chrooted(char *chos)
-{
 /* Check to see if we are already chrooted.  This is an indirect test.
  *  We look to see if the current chos (still stored in chos) is set to
  *  the default value of /.
  */
+int is_chrooted(char *chos)
+{
   if (chos[0]=='/' && chos[1]==0 )
     return 0;
   else
@@ -191,7 +244,7 @@ int set_multi(char *os)
 }
 
 int mount_dirs(chos_env *env, char *chos_root) {
-    chos_debug("Info: enter mount_dirs env=%s chos_root=%s\n",env->name,chos_root);
+  chos_debug("Info: enter mount_dirs env=%s chos_root=%s\n",env->name,chos_root);
   chos_dir *dir = env->dirs;
 
   while(dir) {
@@ -211,36 +264,6 @@ int mount_dirs(chos_env *env, char *chos_root) {
   }
 
   return 0;
-}
-
-int _mount_dirs(char **chos_dir, char *prefix) {
-
-  do {
-    int src_len = strlen(*chos_dir)+strlen(prefix)+1;
-    int target_len = strlen(*chos_dir)+strlen(chos_root)+1;
-
-    char *src_path = (char *)malloc(sizeof(char)*(src_len+1));
-    char *target_path = (char *)malloc(sizeof(char)*(target_len+1));
-
-    snprintf(src_path,src_len+1,"%s/%s",prefix,*chos_dir);
-    snprintf(target_path,target_len+1,"%s/%s",chos_root,*chos_dir);
-
-    fprintf(stderr,"%s on %s\n",src_path,target_path);
-
-    /* TODO: MS_NODEV and MS_NOSUID do not appear to work here */
-    if(mount(src_path,target_path,"bind", MS_BIND|MS_NODEV|MS_NOSUID|MS_RDONLY,NULL)!=0) {
-       perror("mount");
-       return 1;
-     }
-
-    free(src_path);
-    free(target_path);
-
-    chos_dir+=1;
-  } while (*chos_dir);
-
-  return 0;
-
 }
 
 
@@ -410,10 +433,6 @@ char *check_chos(char *name)
     }
   }
   fclose(cfile);
-  if(!chos_append_env(name)) {
-    chos_err("Failed to add environment \"%s\" to CHOS.\n",name);
-    return NULL;
-  }
   return retpath;
 }
 
@@ -427,6 +446,8 @@ int chos_populate_dirs(chos_env *env)
   char *line;
   const char delim[] = " ";
   int han;
+
+  chos_debug("Info: in chos_populate_dirs env=%s.\n",env->name);
 
   cfile=fopen(env->config_file,"r");
   if (cfile==NULL){
@@ -462,16 +483,12 @@ int chos_populate_dirs(chos_env *env)
       return 0;
     }
 
-    if(env->dirs) {
-      chos_append_dir(env->dirs, src, dest);
-    }
-    else {
-      env->dirs = create_chos_dir(src,dest);
-    }
-
+    chos_debug("Info: Append src=%s dest=%s env=%s.\n",src,dest,env->name);
+    chos_append_dir(env, src, dest);
   }
 
   fclose(cfile);
+
   return 1;
 }
 
