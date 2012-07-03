@@ -28,6 +28,7 @@
 #define ENVHEAD "%ENV"
 #define	CONFIG	".chos"
 #define MAX_LEN 256
+#define BUFSIZE 2048
 
 int set_multi(char *os);
 char *check_chos(char *name);
@@ -40,6 +41,7 @@ typedef struct chos_dir {
     char *src;
     char *dest;
     struct chos_dir *next;
+    struct chos_dir *prev;
 } chos_dir;
 
 typedef struct chos_env {
@@ -49,13 +51,15 @@ typedef struct chos_env {
     struct chos_env *next;
 } chos_env;
 
-chos_env *create_chos_env(char *name);
-chos_dir *create_chos_dir(char *src, char *dest);
+chos_env *chos_create_env(char *name);
+chos_dir *chos_create_dir(char *src, char *dest, chos_dir *prev);
 chos_env *chos_get_env(char *env_name);
 int chos_append_dir(chos_env *env, char *src, char *dest);
 int chos_append_env(char *name);
 int chos_populate_dirs(chos_env *env);
 int configure_chos(void);
+int umount_dirs(chos_env *env);
+int mount_dirs(chos_env *env, const char *chos_root);
 
 static const char *chos_root = "/chos2/";
 static const char *chos_config_prefix = "/etc/chos.d/";

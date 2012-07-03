@@ -23,6 +23,7 @@
  *
  */
 
+#include <errno.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,6 +43,7 @@ int main(int argc, char *argv[])
    char chos[MAX_OS];
    char *newarg[3];
    char **newenv;
+   char cwd[BUFSIZE];
 
 
    osenv=getenv("CHOS");
@@ -67,6 +69,11 @@ int main(int argc, char *argv[])
      return -2;
    }
 
+   if(getcwd(cwd,BUFSIZE)==NULL) {
+     chos_err("getcwd: %s\n",strerror(errno));
+     return(1);
+   }
+
 
 /* If the current chos is different from the requested chos then update it */
    if (os && strncmp(chos,os,MAX_OS)!=0 && set_multi(osenv)!=0){
@@ -77,6 +84,11 @@ int main(int argc, char *argv[])
    if(setuid(getuid())!=-0) {
        perror("setuid");
        return(1);
+   }
+
+   if(chdir(cwd)!=0) {
+     chos_err("chdir: %s\n",strerror(errno));
+     return 1;
    }
 
    if (argc==1){
