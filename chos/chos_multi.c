@@ -313,11 +313,22 @@ int mount_dirs(chos_env *env, const char *chos_root) {
     char *src = dir->src;
     char *dest = dir->dest;
 
+    unsigned long mountflags = MS_BIND|MS_NOSUID;
+
+    if( (strlen(src)<5) || (strncmp(src,"/dev/",5)!=0) ) {
+      mountflags |= MS_NODEV;
+    }
+
     chos_debug("Info: %s on %s\n",src,dest);
 
-    /* TODO: MS_NODEV and MS_NOSUID do not appear to work here */
-    if(mount(src,dest,"bind", MS_BIND|MS_NODEV|MS_NOSUID|MS_RDONLY,NULL)!=0) {
+    /* TODO: MS_NODEV and MS_NOSUID only appear to work here after the mount is
+       remounted with MS_REMOUNT */
+    if(mount(src,dest,"bind",mountflags ,NULL)!=0) {
        chos_err("mount %s on %s: %s\n",src,dest,strerror(errno));
+       return 1;
+     }
+    if(mount(src,dest,"bind", mountflags|MS_REMOUNT, NULL)!=0) {
+       chos_err("remount %s on %s: %s\n",src,dest,strerror(errno));
        return 1;
      }
     chos_debug("Info: Completed %s on %s\n",src,dest);
