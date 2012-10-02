@@ -98,11 +98,12 @@ then
 else
     AC_MSG_RESULT([found in $KERNEL_HDR])
 fi
-KERNEL_VERSION=`$CC -E -dM -I$KERNEL_HDR $KERNEL_HDR/linux/version.h|$AWK '/UTS_RELEASE/ { print $3 }' \
+KERNEL_VERSION=`$CC -E -dM -I$KERNEL_HDR $KERNEL_HDR/linux/utsrelease.h|$AWK '/UTS_RELEASE/ { print $3 }' \
        | sed 's/"//g'`
 AC_MSG_RESULT(kernel version: $KERNEL_VERSION)
 AC_SUBST(KERNEL_BASE)
 AC_SUBST(KERNEL_HDR)
+AC_SUBST(KERNEL_VERSION)
 
 
 #****************************************************************************/
