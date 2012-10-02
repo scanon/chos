@@ -6,6 +6,7 @@ DIR=${2}
 
 SM="/$DIR/boot/System.map-$KVER"
 KB="/boot/vmlinux-$KVER"
+[ -e /usr/lib/debug/lib/modules/$KVER/vmlinux  ] && KB="/usr/lib/debug/lib/modules/$KVER/vmlinux"
 INC="address.h"
 
 if [ -e "$INC" ] ; then

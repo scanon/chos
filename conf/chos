@@ -10,6 +10,6 @@
 # /auto/redhat73:/auto/redhat73
 #
 %SHELLS
-local:/local/root
+local:/
 
 %ENV

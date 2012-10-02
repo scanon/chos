@@ -1582,7 +1582,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=CHOS
- VERSION=0.09
+ VERSION=0.10
 
 
 cat >>confdefs.h <<_ACEOF

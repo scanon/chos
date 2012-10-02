@@ -6,7 +6,7 @@
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
-#define MY_MODULE_VERSION "0.09"
+#define MY_MODULE_VERSION "0.11"
 
 /*
  * chos, Linux Kernel Module.
@@ -50,6 +50,8 @@
  *  0.03 - Support for 2.6
  *  0.08 - Fix for follow_link to use ERR_PTR macro
  *  0.09 - Remove exception for root in setting the link
+ *  0.10 - Port to el6 kernel family
+ *  0.11 - Add feature to allow exiting CHOS from within CHOS
  *
  */
 
@@ -82,7 +84,7 @@
 //EXPORT_NO_SYMBOLS;
 
 #ifdef MODULE_LICENSE
-MODULE_LICENSE("BSD");
+MODULE_LICENSE("GPL");
 #endif
 
 /* The table variable is used to pass in an address for a save state.
@@ -119,6 +121,8 @@ int save_state=0;
 
 #if defined(START_ADD) && defined(END_ADD)
 #define WRAP_DOFORK
+int init_do_fork(void);
+void cleanup_do_fork(void);
 #endif
 #if defined(START_ADD) && defined(LENGTH)
 #define WRAP_DOFORK
@@ -226,7 +230,9 @@ void set_link(struct chos_link *link, struct task_struct *t)
     read_unlock(&(p->lock));
   }
 
-  atomic_inc(&(link->count));
+  if (link!=NULL){
+    atomic_inc(&(link->count));
+  }
   write_lock(&(p->lock));
   p->link=link;
   /* The start time is used to determine if this structure is really
@@ -318,7 +324,7 @@ int is_chrooted(void)
   return retval;
 }
 
-int my_chroot(void)
+int my_chroot(const char *path)
 {
   kernel_cap_t capback;
   int retval;
@@ -332,7 +338,7 @@ int my_chroot(void)
   cap_raise(*(kernel_cap_t *)&(current->cred->cap_effective),CAP_SYS_CHROOT);
   mem=get_fs(); 
   set_fs(KERNEL_DS);
-  if ((retval=sys_chroot(CHOSROOT))!=0){
+  if ((retval=sys_chroot(path))!=0){
     printk("chroot failed\n");
   }
   (*(kernel_cap_t *)&current->cred->cap_effective)=capback;
@@ -369,6 +375,13 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
 	  return -ENOMEM;
   }
 
+  if (text[0]=='/' && text[1]==0 ){
+    set_fs_root(current->fs,ch->nochroot.mnt,ch->nochroot.dentry);
+    set_link(NULL,current);
+    return count;
+  }
+ 
+
   if (!is_valid_path(text)){
     printk("Attempt to use invalid path. uid=%d (Requested %s)\n",current->cred->uid,text);
     return -ENOENT;
@@ -380,7 +393,7 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
   link=create_link(text);
   set_link(link,current);
   if (!is_chrooted()){
-    my_chroot();
+    my_chroot(CHOSROOT);
   }
   MOD_DEC;
 
@@ -616,6 +629,9 @@ int init_chos(void)
   // 7f2da1e7d0330395e5e9e350b879b98a1ea495df and what the
   // implications are
   retval=path_lookup(CHOSROOT, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,&(ch->named)); 
+  
+  retval=path_lookup("/", LOOKUP_FOLLOW | LOOKUP_DIRECTORY | LOOKUP_NOALT,&(ch->nochroot)); 
+
   
   if (max>0)
     ch->pid_max=max;

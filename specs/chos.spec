@@ -1,5 +1,5 @@
 %define module chos
-%define version 0.09
+%define version 0.10
 %define release 1
 
 #
@@ -85,9 +85,11 @@ install -m 644 %{SOURCE1} $RPM_BUILD_ROOT/usr/src/%{module}-%{version}
 
 mkdir -p $RPM_BUILD_ROOT/%{_initrddir}
 install -m755  utils/chos.init $RPM_BUILD_ROOT/%{_initrddir}/chos
+mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
+install -m755  conf/chos.sys $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/chos
 
 mkdir $RPM_BUILD_ROOT/chos
-./utils/mkchos $RPM_BUILD_ROOT/chos
+#./utils/mkchos $RPM_BUILD_ROOT/chos
 
 
 
@@ -113,8 +115,8 @@ fi
 /chos
 %config /etc/chos
 %config /etc/chos.conf
+%config /etc/sysconfig/chos
 /%{_lib}/security/pam_*.so
-/usr/bin/mklocal
 %{_mandir}/man1/chos.1*
 %config /%{_initrddir}/*
 %defattr(755,root,root)

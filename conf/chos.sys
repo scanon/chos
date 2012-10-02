@@ -1,0 +1,2 @@
+CHOS=/etc/chos
+BINDMOUNT="/dev /dev/shm /dev/pts /sys /proc"
