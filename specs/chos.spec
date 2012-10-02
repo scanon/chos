@@ -168,7 +168,6 @@ fi
 %endif
 
 /sbin/chkconfig chos on
-/etc/init.d/chos start
 
 echo ""
 echo "If you run automounters, be sure to replicate all entries and prepend the paths with /chos."
