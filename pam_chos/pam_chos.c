@@ -73,6 +73,9 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
   char osenv[MAXLINE+1];
   char envvar[50];
   int usedefault=0;
+  unsigned int oldeuid;
+
+  oldeuid = geteuid();
   
   openlog("pam_chos", LOG_PID, LOG_AUTHPRIV);
   
@@ -89,6 +92,8 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     syslog(LOG_ERR,"getpwuid failed for %d\n",getuid());
     return ret;
   }
+
+  seteuid(pw->pw_uid);
 
 //  if ((env=pam_getenv(pamh,"CHOS"))){
   if ((env=getenv("CHOS"))){
@@ -121,6 +126,7 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
 
   sprintf(envvar,"CHOS=%.40s",osenv);
   pam_putenv(pamh, envvar);
+  seteuid(oldeuid);
   closelog();
   ret = PAM_SUCCESS;
   return ret;
