@@ -84,7 +84,7 @@
 //EXPORT_NO_SYMBOLS;
 
 #ifdef MODULE_LICENSE
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("BSD");
 #endif
 
 /* The table variable is used to pass in an address for a save state.
@@ -376,7 +376,7 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
   }
 
   if (text[0]=='/' && text[1]==0 ){
-    set_fs_root(current->fs,ch->nochroot.mnt,ch->nochroot.dentry);
+    set_fs_root(current->fs,&(ch->nochroot.path));
     set_link(NULL,current);
     return count;
   }
@@ -629,9 +629,6 @@ int init_chos(void)
   // 7f2da1e7d0330395e5e9e350b879b98a1ea495df and what the
   // implications are
   retval=path_lookup(CHOSROOT, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,&(ch->named)); 
-  
-  retval=path_lookup("/", LOOKUP_FOLLOW | LOOKUP_DIRECTORY | LOOKUP_NOALT,&(ch->nochroot)); 
-
   
   if (max>0)
     ch->pid_max=max;

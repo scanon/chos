@@ -1,5 +1,5 @@
 %define module chos
-%define version 0.10
+%define version 0.11
 %define release 1
 
 #
@@ -18,7 +18,7 @@
 # Note that this will build a module for the kernel running on the build
 # host.
 #
-%define buildmod 0
+%define buildmod 1
 #%define initdir /etc/rc.d/init.d
 
 Summary: chos utilities
@@ -38,7 +38,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root/
 Requires: dkms >= 1.00
 %endif
 %if %{buildmod}
-BuildRequires: kernel-source
+BuildRequires: kernel-devel
 %endif
 Requires: bash
 
@@ -60,6 +60,7 @@ the DKMS framework.
         --enable-securedir=/%{_lib}/security \
 %if %{buildmod}
         --enable-kernel=yes \
+        --with-kheaders=/lib/modules/`uname -r`/build/ \
 %endif
         --enable-fakeroot=$RPM_BUILD_ROOT
 make
