@@ -4,7 +4,7 @@
 #
 
 # Version
-VERSION=0.11
+VERSION=0.09
 
 # Variables
 #
@@ -30,7 +30,7 @@ mkdir $TMPDIR/rpmbuild/RPMS
 mkdir $TMPDIR/rpmbuild/SRPMS
 
 # Build RPM
-rpmbuild --define "_topdir $TMPDIR/rpmbuild" -ta $TARFILE  || exit
+rpmbuild --define "_topdir $TMPDIR/rpmbuild" -ta $TARFILE
 
 # Move RPM to /tmp
 mv $TMPDIR/rpmbuild/RPMS/`uname -i`/*rpm /tmp
