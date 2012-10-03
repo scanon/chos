@@ -629,6 +629,7 @@ int init_chos(void)
   // 7f2da1e7d0330395e5e9e350b879b98a1ea495df and what the
   // implications are
   retval=path_lookup(CHOSROOT, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,&(ch->named)); 
+  retval=path_lookup("/", LOOKUP_FOLLOW | LOOKUP_DIRECTORY,&(ch->nochroot)); 
   
   if (max>0)
     ch->pid_max=max;
