@@ -59,8 +59,8 @@ int main(int argc, char *argv[])
    }
    os=check_chos(osenv);
    if (os==NULL && strcmp(osenv,DEFAULT)){
-     fprintf(stderr,"Warning: The requested os is not recognized.  Trying anyway.\n");
-     os=osenv;
+     fprintf(stderr,"Warning: The requested os is not recognized.  Using the default environment instead.\n");
+     os=check_chos(strdup("default"));
    }
 
    pw=getpwuid(getuid());
