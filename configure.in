@@ -19,7 +19,7 @@ dnl AC_HEADER_DIRENT
 #AC_CONFIG_SRCDIR(kernel/chos_lkm.c)
 AC_CONFIG_AUX_DIR(config)
 
-AM_INIT_AUTOMAKE(CHOS,0.10)
+AM_INIT_AUTOMAKE(CHOS,0.11)
 
 AM_CONFIG_HEADER(config.h)
 
@@ -91,7 +91,7 @@ AC_ARG_WITH(
     [KERNEL_BASE=$withval],
     [KERNEL_BASE=/lib/modules/`uname -r`/build])
 KERNEL_HDR="$KERNEL_BASE/include"
-if test ! -f "$KERNEL_HDR/linux/config.h"
+if test ! -f "$KERNEL_HDR/linux/utsrelease.h"
 then
     AC_MSG_RESULT([not found])
     AC_MSG_ERROR([cannot find the kernel headers in $KERNEL_HDR. Use --with-kernel-source])

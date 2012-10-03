@@ -58,7 +58,9 @@ if  [ -e $SM ] ; then
   # find_task_by_pid_ns and tasklist_lock are not exported
   FIND_PID=`grep ' find_task_by_pid_ns$' $SM | awk '{print $1}'`
   TASKLIST_LOCK=`grep ' tasklist_lock$' $SM | awk '{print $1}'`
+  SET_FS_ROOT=`grep ' set_fs_root$' $SM | awk '{print $1}'`
   echo "struct task_struct* (*s_find_task_by_pid_ns)(pid_t nr, struct pid_namespace *ns)=(void *)0x$FIND_PID;" >>$INC;
   echo "rwlock_t *tasklist_lock_p = (rwlock_t *)0x$TASKLIST_LOCK;" >>$INC;
+  echo "void* (*set_fs_root_p)(struct fs_struct *, struct path *)=(void *)0x$SET_FS_ROOT;" >>$INC;
 
 fi

@@ -376,7 +376,7 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
   }
 
   if (text[0]=='/' && text[1]==0 ){
-    set_fs_root(current->fs,&(ch->nochroot.path));
+    set_fs_root_p(current->fs,&(ch->nochroot.path));
     set_link(NULL,current);
     return count;
   }
