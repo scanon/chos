@@ -74,6 +74,8 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
   char envvar[50];
   int usedefault=0;
   unsigned int oldeuid;
+
+  oldeuid = geteuid();
   
   openlog("pam_chos", LOG_PID, LOG_AUTHPRIV);
   
@@ -91,9 +93,9 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     return ret;
   }
 
-  oldeuid = geteuid();
   seteuid(pw->pw_uid);
 
+//  if ((env=pam_getenv(pamh,"CHOS"))){
   if ((env=getenv("CHOS"))){
     strncpy(osenv,env,MAXLINE);
   }
@@ -113,8 +115,8 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     usedefault=1;  
   }
   else if (os==NULL){
-    syslog(LOG_WARNING,"Warning: requested os (%s) is not recognized; using default\n",osenv);
-    os=check_chos(strdup("default"));  /* Fail back to the default CHOS */
+    syslog(LOG_WARNING,"Warning: requested os (%s) is not recognized\n",osenv);
+    os=osenv;  /* Let's try it just in case */
   }
   
   if (usedefault==0 && set_multi(os)!=0){
