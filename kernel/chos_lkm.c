@@ -6,7 +6,7 @@
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
-#define MY_MODULE_VERSION "0.11"
+#define MY_MODULE_VERSION "0.11.1"
 
 /*
  * chos, Linux Kernel Module.
@@ -39,19 +39,21 @@
  *
  *  History
  *  -------
- *  0.01 - Initial release.
- *  0.02 - Significant changes
- *         -- Changed many arrays to struct
- *         -- Changed recover method to use struct
- *         -- Added auto cleanjp
- *         -- Added cacheing
- *         -- Use start_time to confirm validity of cache
- *         -- Don't allow write if not euid==0
- *  0.03 - Support for 2.6
- *  0.08 - Fix for follow_link to use ERR_PTR macro
- *  0.09 - Remove exception for root in setting the link
- *  0.10 - Port to el6 kernel family
- *  0.11 - Add feature to allow exiting CHOS from within CHOS
+ *  0.01   - Initial release.
+ *  0.02   - Significant changes
+ *           -- Changed many arrays to struct
+ *           -- Changed recover method to use struct
+ *           -- Added auto cleanjp
+ *           -- Added cacheing
+ *           -- Use start_time to confirm validity of cache
+ *           -- Don't allow write if not euid==0
+ *  0.03   - Support for 2.6
+ *  0.08   - Fix for follow_link to use ERR_PTR macro
+ *  0.09   - Remove exception for root in setting the link
+ *  0.10   - Port to el6 kernel family
+ *  0.11   - Add feature to allow exiting CHOS from within CHOS
+ *  0.11.1 - Fix to allow re-entering prior CHOS environment after
+ *               exiting CHOS
  *
  */
 
