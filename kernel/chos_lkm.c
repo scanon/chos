@@ -6,7 +6,7 @@
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
-#define MY_MODULE_VERSION "0.11.1"
+#define MY_MODULE_VERSION "0.11.2"
 
 /*
  * chos, Linux Kernel Module.
@@ -54,6 +54,9 @@
  *  0.11   - Add feature to allow exiting CHOS from within CHOS
  *  0.11.1 - Fix to allow re-entering prior CHOS environment after
  *               exiting CHOS
+ *  0.11.2 - Explicitly set new processes' CHOS links after do_fork()
+ *               returns to handle some scenarios where child
+ *               processes quickly fork new children and then exit
  *
  */
 
@@ -914,8 +917,11 @@ long chos_do_fork(unsigned long clone_flags,
             int __user *parent_tidptr,
             int __user *child_tidptr)
 {
+  struct chos_link *parent_link;
   struct task_struct *t;
   long pid;
+
+  parent_link = lookup_link(current);
 
   pid=jumper(clone_flags, stack_start, regs, stack_size, 
 		parent_tidptr, child_tidptr); 
@@ -923,7 +929,7 @@ long chos_do_fork(unsigned long clone_flags,
     write_lock_irq(tasklist_lock_p);
     t=s_find_task_by_pid_ns(pid,current->nsproxy->pid_ns);
     write_unlock_irq(tasklist_lock_p);
-    lookup_link(t);
+    set_link(parent_link,t);
   }
   else{
     lookup_link(current);

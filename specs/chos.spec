@@ -1,5 +1,5 @@
 %define module chos
-%define version 0.11.1
+%define version 0.11.2
 %define release 1
 
 #
