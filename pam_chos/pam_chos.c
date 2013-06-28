@@ -37,7 +37,7 @@
  * - no chos
  */
 
-#define	PAM_SM_SESSION
+#define  PAM_SM_SESSION
 #include <security/pam_modules.h>
 
 #include <syslog.h>
@@ -54,15 +54,50 @@
 #include "pam_chos.h"
 #include "../config.h"
 
-int set_multi(char *os);
-char * check_chos(char *name);
-int read_chos_file(char *dir,char *osenv,int max);
 
-#define	CONFIG	".chos"
-#define MAX_LEN 256
-#define MAXLINE 80
+
+pam_chos_config *init_pam_chos_config(void) {
+
+  pam_chos_config pam_chos_config_default = {
+    .user_conf_file = strdup(USER_CONF_FILE_DEFAULT),
+    .fail_to_default = 0
+  };
+
+  pam_chos_config *cfg =
+    (pam_chos_config *)malloc(sizeof(pam_chos_config));
+
+  return memcpy(cfg, &pam_chos_config_default,
+    sizeof(pam_chos_config));
+}
+
+int argmatch(const char *arg, const char *match) {
+  if(strlen(arg) < strlen(match)) {
+    return 0;
+  }
+  else {
+    return (strncmp(arg, match, strlen(match)) == 0);
+  }
+}
+
+void parse_pam_chos_args(pam_chos_config *args, int argc, const char
+        **argv) {
+
+  while(argc--) {
+     if(argmatch(argv[0],"user_conf_file=")) {
+       args->user_conf_file =
+         strndup(argv[0]+strlen("user_conf_file="),MAX_LEN);
+     }
+
+     if(argmatch(argv[0],"fail_to_default=")) {
+       args->fail_to_default =
+         atoi(argv[0]+strlen("fail_to_default="));
+     }
+     argv++;
+  }
+}
+
 PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
-				   int argc, const char **argv)
+           int argc, const char **argv)
 {
   int ret = PAM_SESSION_ERR;
   int onerr = PAM_SUCCESS;
@@ -73,9 +108,7 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
   char osenv[MAXLINE+1];
   char envvar[50];
   int usedefault=0;
-  unsigned int oldeuid;
-
-  oldeuid = geteuid();
+  pam_chos_config *cfg;
   
   openlog("pam_chos", LOG_PID, LOG_AUTHPRIV);
   
@@ -93,14 +126,15 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     return ret;
   }
 
-  seteuid(pw->pw_uid);
 
-//  if ((env=pam_getenv(pamh,"CHOS"))){
+  cfg = init_pam_chos_config();
+  parse_pam_chos_args(cfg, argc, argv);
+
   if ((env=getenv("CHOS"))){
     strncpy(osenv,env,MAXLINE);
   }
   else{
-    read_chos_file(pw->pw_dir,osenv,MAXLINE);
+    read_chos_file(cfg->user_conf_file, pw->pw_dir, osenv);
     if (osenv[0]==0){
       syslog(LOG_ERR,"CHOS not set\n");
       return onerr;
@@ -111,12 +145,20 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
 /* We are using the default, but there isn't a default
  *  spec'd in /etc/chos
  */
-  if (os==NULL && strcmp(osenv,DEFAULT)==0){
-    usedefault=1;  
-  }
-  else if (os==NULL){
-    syslog(LOG_WARNING,"Warning: requested os (%s) is not recognized\n",osenv);
-    os=osenv;  /* Let's try it just in case */
+  if (os == NULL) {
+    if (strcmp(osenv,DEFAULT_ENV_NAME)==0){
+      usedefault=1;  
+    }
+    else if (cfg->fail_to_default) {
+      syslog(LOG_WARNING,
+        "Warning: requested os (%s) is not recognized; using default\n",osenv);
+      os=check_chos(strdup(DEFAULT_ENV_NAME));  /* Fail back to the default CHOS */
+    }
+    else {
+      syslog(LOG_WARNING,
+              "Warning: requested os (%s) is not recognized\n",osenv);
+      os=osenv;  /* Let's try it just in case */
+    }
   }
   
   if (usedefault==0 && set_multi(os)!=0){
@@ -126,16 +168,15 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
 
   sprintf(envvar,"CHOS=%.40s",osenv);
   pam_putenv(pamh, envvar);
-  seteuid(oldeuid);
   closelog();
   ret = PAM_SUCCESS;
   return ret;
 }
 
 PAM_EXTERN int pam_sm_close_session(pam_handle_t *pamh, int flags,
-				    int argc, const char **argv)
+            int argc, const char **argv)
 {
-	return PAM_SUCCESS;
+  return PAM_SUCCESS;
 }
 
 #ifdef PAM_STATIC
@@ -143,13 +184,13 @@ PAM_EXTERN int pam_sm_close_session(pam_handle_t *pamh, int flags,
 /* static module data */
 
 struct pam_module _pam_chos_modstruct = {
-	"pam_chos",
-	NULL,
-	NULL,
-	pam_sm_acct_mgmt,
-	NULL,
-	NULL,
-	NULL
+  "pam_chos",
+  NULL,
+  NULL,
+  pam_sm_acct_mgmt,
+  NULL,
+  NULL,
+  NULL
 };
 #endif
 
@@ -235,14 +276,14 @@ char * check_chos(char *name)
   return retpath;
 }
 
-int read_chos_file(char *dir,char *osenv,int max)
+int read_chos_file(char *user_conf_file, char *dir, char *osenv)
 {
   int conf;
   int i;
   int count=0;
   char userfile[MAX_LEN+1];
 
-  sprintf(userfile,"%.100s/%.5s",dir,CONFIG);
+  sprintf(userfile,"%.100s/%.10s",dir,user_conf_file);
   conf=open(userfile,O_RDONLY);
   if (conf>=0){
     count=read(conf,osenv,MAXLINE-1);
@@ -250,7 +291,7 @@ int read_chos_file(char *dir,char *osenv,int max)
     close(conf);
   }
   if (count==0){
-    strcpy(osenv,DEFAULT);
+    osenv = strdup(DEFAULT_ENV_NAME);
     count=7;
   }
 
