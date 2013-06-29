@@ -373,7 +373,10 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
   }
   text=(char *)kmalloc(i,GFP_KERNEL);
   if (text){
-     __copy_from_user(text, buffer, i);
+     retval = __copy_from_user(text, buffer, i);
+     if(retval > 0) {
+         printk("MODULE_NAME: __copy_from_user returned %d\n.",retval);
+     }
      text[i]=0;
   }
   else{
@@ -520,7 +523,10 @@ int write_valid(struct file* file, const char* buffer, unsigned long count, void
    path=(char *)kmalloc(i,GFP_KERNEL);
    if (path){
      path[i]=0;
-     __copy_from_user(path, buffer, i);
+     retval = __copy_from_user(path, buffer, i);
+     if(retval > 0) {
+         printk("MODULE_NAME: __copy_from_user returned %d\n.",retval);
+     }
      add_valid_path(path,i);
    }
    else{
