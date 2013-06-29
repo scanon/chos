@@ -44,11 +44,18 @@ if  [ -e $SM ] ; then
     else
       echo "#define START_ADD  0x$address" > $INC
       if [ $(uname -m|grep -c x86_64) -gt 0 ] ; then
+        echo '#if LINUX_VERSION_CODE == KERNEL_VERSION(2,6,18) && RHEL_MAJOR == 6' >> $INC
+        echo "#define LENGTH    0xC" >> $INC
+        echo 'unsigned char opcode[] =   "\x41\x57\x49\x89\xd7\x41\x56\x49\x89\xce\x41\x55";' >> $INC
+        echo '#elif LINUX_VERSION_CODE == KERNEL_VERSION(2,6,32)&& RHEL_MAJOR == 5' >> $INC
         echo "#define LENGTH    0x1f" >> $INC
         echo 'unsigned char opcode[] =   "\x55\x48\x89\xe5\x48\x81\xec\xb0\x00\x00\x00\x48\x89\x5d\xd8\x4c\x89\x65\xe0\x4c\x89\x6d\xe8\x4c\x89\x75\xf0\x4c\x89\x7d\xf8";' >> $INC
+        echo '#endif' >> $INC
       else
+        echo '#if LINUX_VERSION_CODE == KERNEL_VERSION(2,6,18) && RHEL_MAJOR == 5' >> $INC
         echo "#define LENGTH    0x6" >> $INC
         echo 'unsigned char opcode[] =   "\x55\x89\xcd\x57\x89\xc7\x56";' >> $INC
+        echo '#endif' >> $INC
       fi
     fi
   fi
@@ -59,8 +66,14 @@ if  [ -e $SM ] ; then
   FIND_PID=`grep ' find_task_by_pid_ns$' $SM | awk '{print $1}'`
   TASKLIST_LOCK=`grep ' tasklist_lock$' $SM | awk '{print $1}'`
   SET_FS_ROOT=`grep ' set_fs_root$' $SM | awk '{print $1}'`
+  echo "#ifdef PID_NS" >>$INC;
   echo "struct task_struct* (*s_find_task_by_pid_ns)(pid_t nr, struct pid_namespace *ns)=(void *)0x$FIND_PID;" >>$INC;
+  echo "#endif" >>$INC;
   echo "rwlock_t *tasklist_lock_p = (rwlock_t *)0x$TASKLIST_LOCK;" >>$INC;
+  echo "#ifdef STRUCT_PATH" >>$INC;
   echo "void* (*set_fs_root_p)(struct fs_struct *, struct path *)=(void *)0x$SET_FS_ROOT;" >>$INC;
+  echo "#else" >>$INC;
+  echo "void* (*set_fs_root_p)(struct fs_struct *, struct vfsmount *, struct dentry *)=(void *)0x$SET_FS_ROOT;" >>$INC;
+  echo "#endif" >>$INC;
 
 fi
