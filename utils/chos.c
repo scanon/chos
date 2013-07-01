@@ -41,8 +41,7 @@ char ** set_env();
 
 #define MAXLINE 80
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
    struct passwd *pw;
    FILE *stream;
    pid_t pid;
@@ -102,13 +101,12 @@ int main(int argc, char *argv[])
     }
 }
 
-int configure_chos()
-{
+int configure_chos() {
 }
 
-int is_chrooted(char *chos)
-{
-/* Check to see if we are already chrooted.  This is an indirect test.
+int is_chrooted(char *chos) {
+/*
+ * Check to see if we are already chrooted.  This is an indirect test.
  *  We look to see if the current chos (still stored in chos) is set to
  *  the default value of /.
  */
@@ -118,10 +116,10 @@ int is_chrooted(char *chos)
     return 1;
 }
 
-/* Simple function to set the chos link
+/*
+ * Simple function to set the chos link
  */
-int set_multi(char *os)
-{
+int set_multi(char *os) {
    FILE *stream;
    stream=fopen(SETCHOS,"w");
    if (stream==NULL){
@@ -139,8 +137,7 @@ int set_multi(char *os)
 /*
  * Simple function to get the target of the chos link
  */
-int get_multi(char *os)
-{
+int get_multi(char *os) {
    int len;
    len=readlink(LINKCHOS,os,MAX_OS);
    if (len<1){
@@ -156,8 +153,7 @@ int get_multi(char *os)
  * This function looks at the /etc/chos.conf file and sets variables
  * listed in the %ENV section based on the environment of the calling shell.
  */
-char ** set_env()
-{
+char ** set_env() {
   FILE *stream;
   char **env;
   char *value;
@@ -187,12 +183,12 @@ char ** set_env()
       continue; 
 /* Remove new line */
     while(*value!=0 && *value!='\n')
-	value++;
+  value++;
     *value=0;
     if (start){
       count++;
       if (buffer[0]=='%')
-	break;
+  break;
     }
     else if (strcmp(buffer,ENVHEAD)==0){
       start=1;
@@ -215,12 +211,12 @@ char ** set_env()
       continue; 
 /* Remove new line */
     while(*value!=0 && *value!='\n')
-	value++;
+  value++;
     *value=0;
     if (start){
       count++;
       if (buffer[0]=='%')
-	break;
+  break;
       value=getenv(buffer);
       if (strcmp(buffer,"PATH")==0){
         env[setc]=DEFPATH;
@@ -233,15 +229,10 @@ char ** set_env()
           fprintf(stderr,"failed to allocate memory\n");
           return;
         }
-/*        printf("%s=%s\n",buffer,value); */
         sprintf(var,"%s=%s",buffer,value);
         env[setc]=var;
         setc++;
       }
-/*      else{
- *       fprintf(stderr,"var %s not set\n",buffer);
- *     }
- */
     }
     else if (strcmp(buffer,ENVHEAD)==0){
       start=1;
@@ -258,8 +249,7 @@ char ** set_env()
   return env; 
 }
 
-char * check_chos(char *name)
-{
+char * check_chos(char *name) {
   FILE *cfile;
   static char buffer[MAXLINE];
   struct stat st;
@@ -296,17 +286,16 @@ char * check_chos(char *name)
       continue; 
 /* Remove new line */
     while(*path!=0 && *path!='\n')
-	path++;
+  path++;
     *path=0;
     if (start){
       if (buffer[0]=='%')
-	break;
+  break;
       path=buffer;
       while (*path!=':' && *path!=0){
-	path++;
+  path++;
       }
       if (*path==0){
-/*        fprintf(stderr,"Invalid line in chos config file: %s.\n",buffer); */
         continue;
       }
       *path=0;
