@@ -31,3 +31,11 @@
 #define ENVHEAD "%ENV"
 
 #define MAX_OS 80
+
+int argmatch(const char *arg, const char *match);
+char *check_chos(char *name);
+int configure_chos(void);
+int get_multi(char *os);
+char **set_env(void);
+int set_multi(char *os);
+

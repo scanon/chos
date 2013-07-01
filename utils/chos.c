@@ -35,9 +35,6 @@
 #include "chos.h"
 #include "../config.h"
 
-int set_multi();
-char * check_chos(char *name);
-char ** set_env();
 
 #define MAXLINE 80
 
@@ -312,3 +309,13 @@ char * check_chos(char *name) {
   fclose(cfile);
   return retpath;
 }
+
+int argmatch(const char *arg, const char *match) {
+  if(strlen(arg) < strlen(match)) {
+    return 0;
+  }
+  else {
+    return (strncmp(arg, match, strlen(match)) == 0);
+  }
+}
+
