@@ -1,0 +1,75 @@
+2013-06-28  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* Kernel/chos_lkm.c: Restore support for building against the EL5
+	kernel family
+
+	* kernel/chos_lkm.c: Check return value from __copy_from_user().
+
+2013-06-27  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* 0.11.2 release
+
+	* kernel/chos_lkm.c: Modify the behavior of chos_do_fork to
+	explicitly set the CHOS link of new processes to match that of the
+	parent process.  do_fork() copies the original process, wakes up the
+	new process, and then returns.  This means that there is some amount
+	of time where the new process is awake but the real do_fork() has
+	not yet returned.  This change should prevent some scenarios
+	identified by Doug Jacobsen of NERSC where the child process forks
+	its own child process and then exits before its CHOS link is set,
+	resulting in the newest child process not receiving the correct CHOS
+	link mapping.
+
+
+2012-10-29  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* 0.11.1 release
+
+	* kernel/chos_lkm.c: Fix issue where it was not possible to change
+	from the "/" environment back to the previous environment.
+
+2012-10-29  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* utils/chos.c, pam_chos/pam_chos.c: Revert "If an invalid CHOS
+	environment is requested, fall back to the "default" until it can be
+	implemented as a configurable behavior
+
+2012-10-02  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* 0.11 release
+
+	* utils/chos.c, pam_chos/pam_chos.c: If an invalid CHOS environment
+	is requested, fall back to the "default" environment.
+
+	* kernel/chos_lkm.c: Populate nonchroot structure with real root
+	directory
+
+	* kernel/chos_lkm.c: Additional changes to facilitate building under
+	EL6
+
+2012-10-01  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* configure.in: Properly record kernel version.
+
+	* build_rpm: Increase version number to 11.
+
+	* kernel/chos_lkm.c: Minor changes to support building on EL6
+	against EL6 kernel headers
+
+2012-10-01  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* kernel/chos_lkm.c: Merged support for exiting CHOS and returning
+	to the "root" environment from Shane's branch
+
+	* Merged many cleanups and build system improvements from Shane's
+	branch
+
+2012-10-01  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* Do not automatically start CHOS after RPM installation
+
+	* pam_chos/pam_chos.c: Modify pam_chos to use appropraite EUID
+
+2011-12-09  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* Initial support for the EL6 kernel family
