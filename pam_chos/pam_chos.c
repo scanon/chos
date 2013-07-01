@@ -55,7 +55,6 @@
 #include "../config.h"
 
 
-
 pam_chos_config *init_pam_chos_config(void) {
 
   pam_chos_config pam_chos_config_default = {
@@ -83,16 +82,16 @@ void parse_pam_chos_args(pam_chos_config *args, int argc, const char
         **argv) {
 
   while(argc--) {
-     if(argmatch(argv[0],"user_conf_file=")) {
-       args->user_conf_file =
-         strndup(argv[0]+strlen("user_conf_file="),MAX_LEN);
-     }
+    if(argmatch(argv[0],"user_conf_file=")) {
+      args->user_conf_file =
+        strndup(argv[0]+strlen("user_conf_file="),MAX_LEN);
+    }
 
-     if(argmatch(argv[0],"fail_to_default=")) {
-       args->fail_to_default =
-         atoi(argv[0]+strlen("fail_to_default="));
-     }
-     argv++;
+    if(argmatch(argv[0],"fail_to_default=")) {
+      args->fail_to_default =
+        atoi(argv[0]+strlen("fail_to_default="));
+    }
+    argv++;
   }
 }
 
@@ -142,22 +141,21 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
   }
   os=check_chos(osenv);
 
-/* We are using the default, but there isn't a default
- *  spec'd in /etc/chos
- */
   if (os == NULL) {
     if (strcmp(osenv,DEFAULT_ENV_NAME)==0){
       usedefault=1;  
     }
     else if (cfg->fail_to_default) {
+      /* Fail back to the default CHOS */
       syslog(LOG_WARNING,
         "Warning: requested os (%s) is not recognized; using default\n",osenv);
-      os=check_chos(strdup(DEFAULT_ENV_NAME));  /* Fail back to the default CHOS */
+      os=check_chos(strdup(DEFAULT_ENV_NAME));
     }
     else {
+      /* Try the (likely invalid) environment name. */
       syslog(LOG_WARNING,
               "Warning: requested os (%s) is not recognized\n",osenv);
-      os=osenv;  /* Let's try it just in case */
+      os=osenv;
     }
   }
   
@@ -198,18 +196,18 @@ struct pam_module _pam_chos_modstruct = {
 /* This writes the target into the chos kernel module */
 int set_multi(char *os)
 {
-   FILE *stream;
-   stream=fopen(SETCHOS,"w");
-   if (stream==NULL){
-     syslog(LOG_ERR,"Unable to open multi root system\n");
-     return -3;
-   }
-   if (fprintf(stream,os)==-1){
-     syslog(LOG_ERR,"Unable to write to multi root system\n");
-     return -3;
-   }
-   fclose(stream);
-   return 0;
+  FILE *stream;
+  stream=fopen(SETCHOS,"w");
+  if (stream==NULL){
+    syslog(LOG_ERR,"Unable to open multi root system\n");
+    return -3;
+  }
+  if (fprintf(stream,os)==-1){
+    syslog(LOG_ERR,"Unable to write to multi root system\n");
+    return -3;
+  }
+  fclose(stream);
+  return 0;
 }
 
 
