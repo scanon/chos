@@ -1,0 +1,41 @@
+.TH PAM_CHOS "8" "" "" LBL
+.SH NAME
+pam_chos \- PAM module to initiate CHOS environment placement
+.SH SYNOPSIS
+.B \fBpam_chos.so\fR [OPTIONS]
+.SH DESCRIPTION
+.PP
+.nr n 1 1
+pam_chos implements PAM session handling facilities to place a new
+user session within a CHOS environment.  The selected environment will
+be the first successful result of the following search:
+.IP \n[n] 3
+The contents of the \fIuser_conf_file\fR within the user's home
+directory, if this file exists.
+.IP \n+[n]
+The \fIdefault\fR environment, if it is defined \fBand\fR one or more
+of the following are true:
+.RS
+.IP
+\fIuser_conf_file\fR does not exist.
+.IP
+\fIfail_to_default\fR is not 1.
+.RE
+.IP \n+[n]
+The \fIroot\fR environment.
+.SH OPTIONS
+.IP "\fBuser_conf_file\fR"
+The file, relative to the user's home directory, within which pam_chos will look for an environment name.  The default value is \fI.chos\fR.
+.IP "\fBfail_to_default\fR"
+Controls the behavior of pam_chos if \fIuser_conf_file\fR exists but has contents that do not validate against the list of allowed environments.  By default, pam_chos will still attempt to activate the environment named within the file.  If \fIfail_to_default\fR=1, then the \fIdefault\fR environment will be used instead.
+.SH COPYRIGHT
+Copyright \(co 2004, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+
+.br
+If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Technology Transfer Department at  TTD@lbl.gov referring to "procdn (LBNL Ref CR-1972)"
+
+.br
+NOTICE.  This software was developed under funding from the U.S. Department of Energy.  As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, prepare derivative works, and perform publicly and display publicly.  Beginning five (5) years after the date permission to assert copyright is obtained from the U.S. Department of Energy, and subject to any subsequent five (5) year renewals, the U.S. Government is granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, prepare derivative works, distribute copies to the public, perform publicly and display publicly, and to permit others to do so.
+
+.SH "SEE ALSO"
+chos(1)

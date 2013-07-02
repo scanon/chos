@@ -1,3 +1,18 @@
+2013-07-02  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* utils/chos.init: Add support for link creation in /chos/ and
+	improvements to handling /chos/local/
+
+	Merge branch 'pam_chos_config':
+
+	* pam_chos/pam_chos.8: Initial manpage for pam_chos
+
+	* pam_chos/pam_chos.c: Whitespace cleanups
+
+	* pam_chos/pam_chos.c, pam_chos/pam_chos.h: Add configuration
+	tracking structure for pam_chos.  Implement user_conf_file and
+	fail_to_default options.
+
 2013-07-01  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
 
 	* utils/chos.h, utils/chos.c, utils/chos.1: Implement --help and
