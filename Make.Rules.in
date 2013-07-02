@@ -63,6 +63,8 @@ LD_D=@LD_D@
 LD_L=@LD_L@
 MKDIR=@MKDIR@
 SHLIBMODE=@SHLIBMODE@
+MAN1DIR=@mandir@/man1
+MAN8DIR=@mandir@/man8
 
 mkinstalldirs = $(SHELL) $(top_srcdir)/config/mkinstalldirs
 CONFIG_HEADER = config.h

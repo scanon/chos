@@ -13,8 +13,7 @@ LINK_PAMMODUTILS = -lpam
 INCLUDE_PAMMODUTILS = -Ipam/include
 
 LIBSHARED = $(TITLE).so
-
-####################### don't edit below #######################
+MANPAGE = $(TITLE).8
 
 all: $(LIBSHARED)
 
@@ -26,6 +25,7 @@ $(LIBSHARED):   $(LIBOBJ)
 install: all
 	$(MKDIR) $(FAKEROOT)$(SECUREDIR)
 	$(INSTALL) -m $(SHLIBMODE) $(LIBSHARED) $(FAKEROOT)$(SECUREDIR)
+	$(INSTALL) -m 644 $(MANPAGE) $(FAKEROOT)$(MAN8DIR)
 
 remove:
 	rm -f $(FAKEROOT)$(SECUREDIR)/$(TITLE).so

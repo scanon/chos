@@ -119,6 +119,7 @@ fi
 %config /etc/sysconfig/chos
 /%{_lib}/security/pam_*.so
 %{_mandir}/man1/chos.1*
+%{_mandir}/man8/pam_chos.8*
 %config /%{_initrddir}/*
 %defattr(755,root,root)
 /usr/bin/chos

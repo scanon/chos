@@ -13,7 +13,7 @@ be the first successful result of the following search:
 The contents of the \fIuser_conf_file\fR within the user's home
 directory, if this file exists.
 .IP \n+[n]
-The \fIdefault\fR environment, if it is defined \fBand\fR one or more
+The \fIdefault\fR environment, if it is defined and one or more
 of the following are true:
 .RS
 .IP
@@ -24,9 +24,9 @@ of the following are true:
 .IP \n+[n]
 The \fIroot\fR environment.
 .SH OPTIONS
-.IP "\fBuser_conf_file\fR"
+.IP "\fBuser_conf_file\fR=\fIfilename\fR"
 The file, relative to the user's home directory, within which pam_chos will look for an environment name.  The default value is \fI.chos\fR.
-.IP "\fBfail_to_default\fR"
+.IP "\fBfail_to_default\fR=\fINUM\fR"
 Controls the behavior of pam_chos if \fIuser_conf_file\fR exists but has contents that do not validate against the list of allowed environments.  By default, pam_chos will still attempt to activate the environment named within the file.  If \fIfail_to_default\fR=1, then the \fIdefault\fR environment will be used instead.
 .SH COPYRIGHT
 Copyright \(co 2004, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
