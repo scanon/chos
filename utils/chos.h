@@ -34,6 +34,9 @@
 
 int argmatch(const char *arg, const char *match);
 char *check_chos(char *name);
+int chos_parse_args(int argc, char **argv);
+void chos_print_usage(void);
+void chos_print_version(void);
 int configure_chos(void);
 int get_multi(char *os);
 char **set_env(void);

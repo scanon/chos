@@ -1,3 +1,13 @@
+2013-07-01  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* utils/chos.h, utils/chos.c, utils/chos.1: Implement --help and
+	--version options for the chos utility.
+
+	* utils/chos.c: Add argmatch function.
+
+	* utils/chos.c, utils/chos.h: Move function prototypes into
+	chos.h.  Whitespace cleanups.
+
 2013-06-28  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
 
 	* Kernel/chos_lkm.c: Restore support for building against the EL5

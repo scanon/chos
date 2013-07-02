@@ -23,6 +23,7 @@
  *
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pwd.h>
@@ -47,6 +48,10 @@ int main(int argc, char *argv[]) {
    char chos[MAX_OS];
    char *newarg[3];
    char **newenv;
+
+   if(!(chos_parse_args(argc, argv))) {
+     return 1;
+   }
 
    osenv=getenv("CHOS");
    if (osenv==NULL){
@@ -319,3 +324,38 @@ int argmatch(const char *arg, const char *match) {
   }
 }
 
+void chos_print_version(void) {
+  printf("CHOS version %s\n",VERSION);
+}
+
+void chos_print_usage(void) {
+  printf("Usage: chos [OPTION]\n"
+         "       chos [COMMAND]\n\n"
+         "The \"chos\" utility will run COMMAND within the CHOS\n"
+         "environment named within the $CHOS environment variable.\n\n"
+         "If no command is provided, a new login shell will be launched.\n\n"
+         "If the only argument to chos is exactly one of the options defined\n"
+         "below, then the following behavior will result:\n\n"
+         "Options:\n"
+         /* "       --avail\t\t\tList available CHOS environments\n" TODO */
+         "       --version\t\tPrint version information\n"
+         "       --help\t\t\tPrint this help message\n\n");
+}
+
+int chos_parse_args(int argc, char **argv) {
+  if (argc != 2) {
+    return 1;
+  }
+
+  if(argmatch(argv[1], "--version")) {
+    chos_print_version();
+    return 0;
+  }
+  else if(argmatch(argv[1], "--help")) {
+    chos_print_version();
+    chos_print_usage();
+    return 0;
+  }
+
+  return 1;
+}

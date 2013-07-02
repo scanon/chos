@@ -1,24 +1,32 @@
-.TH CHOS "1" "Mar 2004" "chos 0.01" LBL
+.TH CHOS "1" "Jul 2013" "chos 0.11.2" LBL
 .SH NAME
-chos \- launch a new OS shell
+chos \- Launch command within a CHOS environment
 .SH SYNOPSIS
 .B chos
 \fR[\fICOMMAND\fR...]
 .br
 .B chos
+\fR[\fIOPTION\fR...]
+.br
+.B chos
 .SH DESCRIPTION
 .\" Add any additional description here
 .PP
-Run COMMAND or create a new login shell for a new OS.
+Run COMMAND or create a new login shell within a CHOS environment.
 .PP
 If no command is given, chos will start a new login shell using the users default
 shell.
+.SH OPTIONS
+.IP "\fB\-\-help\fR"
+Print usage information
+.IP "\fB\-\-version\fR"
+Print version information
 .SH NOTES
 .SS "ENVIRONMENT VARIABLES"
-The following environment variables could affect ps:
+The following environment variables affect the behavior of the CHOS utility
 .TS
 lfCW l.
-CHOS	Sets the location of the root directory of the desired OS
+CHOS	Sets the name of the desired CHOS environment
 .TE
 
 .SH AUTHOR
