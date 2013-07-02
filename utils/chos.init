@@ -114,10 +114,12 @@ loadvalid() {
 
 mountlocal() {
 	if [ ! -z "$BINDMOUNT" ] ; then
+		[ -d /chos/local ] || mkdir /chos/local
+		mount --bind / /chos/local
 		for d in $(echo $BINDMOUNT)
 		do
 			[ -d /chos/$d ] || mkdir /chos/$d
-			mount --bind $d /chos/$d
+			[ ! -d /$d ] || mount --bind $d /chos/$d
 		done
 	fi
 }
@@ -129,19 +131,23 @@ unmountlocal() {
 		for d in $(echo $BINDMOUNT|sed 's/ /\n/g'|sort -r)
 		do
 			umount /chos/$d
+			umount /chos/local/$d
 		done
+	umount /chos/local
 	fi
 }
 
 makelinks() {
-  for dir in `ls /|grep -v chos|grep -v lost+found|grep -v afs`
-  do
-    if [ ! -e "/chos/$dir" ] ; then
-      if [ ! -h "/chos/$dir" ] ; then
-        ln -s /proc/chos/link/$dir /chos/$dir
+  if [ "$MAKELINKS" == "yes" ] ; then
+    for dir in `ls /|grep -v chos|grep -v lost+found|grep -v afs`
+    do
+      if [ ! -e "/chos/$dir" ] ; then
+        if [ ! -h "/chos/$dir" ] ; then
+          ln -s /proc/chos/link/$dir /chos/$dir
+        fi
       fi
-    fi
-  done
+    done
+  fi
 }
 
 # See how we were called.
@@ -165,7 +171,7 @@ case "$1" in
 	condrestart
 	;;
   *)
-	echo "Usage: chos.init {start|stop|status|restart|reload|condrestart}"
+	echo "Usage: $0 {start|stop|status|restart|reload|condrestart}"
 	exit 1
 esac
 
