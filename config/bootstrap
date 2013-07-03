@@ -1,9 +1,0 @@
-#!/bin/sh
-set -e
-aclocal -I config
-#libtoolize --force --copy
-automake --add-missing --foreign --copy
-autoconf
-
-echo "Done"
-
