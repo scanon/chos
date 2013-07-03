@@ -44,10 +44,10 @@ if  [ -e $SM ] ; then
     else
       echo "#define START_ADD  0x$address" > $INC
       if [ $(uname -m|grep -c x86_64) -gt 0 ] ; then
-        echo '#if LINUX_VERSION_CODE == KERNEL_VERSION(2,6,18) && RHEL_MAJOR == 6' >> $INC
+        echo '#if LINUX_VERSION_CODE == KERNEL_VERSION(2,6,18) && RHEL_MAJOR == 5' >> $INC
         echo "#define LENGTH    0xC" >> $INC
         echo 'unsigned char opcode[] =   "\x41\x57\x49\x89\xd7\x41\x56\x49\x89\xce\x41\x55";' >> $INC
-        echo '#elif LINUX_VERSION_CODE == KERNEL_VERSION(2,6,32)&& RHEL_MAJOR == 5' >> $INC
+        echo '#elif LINUX_VERSION_CODE == KERNEL_VERSION(2,6,32) && RHEL_MAJOR == 6' >> $INC
         echo "#define LENGTH    0x1f" >> $INC
         echo 'unsigned char opcode[] =   "\x55\x48\x89\xe5\x48\x81\xec\xb0\x00\x00\x00\x48\x89\x5d\xd8\x4c\x89\x65\xe0\x4c\x89\x6d\xe8\x4c\x89\x75\xf0\x4c\x89\x7d\xf8";' >> $INC
         echo '#endif' >> $INC
