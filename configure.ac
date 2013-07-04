@@ -1,25 +1,20 @@
 ****************************************************************************/
 # Initialization
 #****************************************************************************/
-m6_define(PROJECT_NAME,  [CHOS])
+m4_define(PROJECT_NAME,  [CHOS])
 m4_define(PROJECT_EMAIL, [chos@nersc.gov])
 m4_define(PROJECT_TAR,   [chos])
 m4_define(PROJECT_MAJOR, 0)
-m4_define(PROJECT_MINOR, 10)
-m4_define(PROJECT_MICRO, 0)
+m4_define(PROJECT_MINOR, 11)
+m4_define(PROJECT_MICRO, 2)
 
-AC_INIT(utils/chos.c)
+AC_INIT(PROJECT_NAME, PROJECT_MAJOR.PROJECT_MINOR.PROJECT_MICRO,
+        PROJECT_EMAIL, PROJECT_TAR)
 
-#AC_INIT(PROJECT_NAME, PROJECT_MAJOR.PROJECT_MINOR.PROJECT_MICRO,
-#        PROJECT_EMAIL, PROJECT_TAR)
-
-dnl AC_HEADER_DIRENT
-
-
-#AC_CONFIG_SRCDIR(kernel/chos_lkm.c)
 AC_CONFIG_AUX_DIR(config)
+AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE(CHOS,0.11.2)
+AM_INIT_AUTOMAKE
 
 AM_CONFIG_HEADER(config.h)
 
@@ -42,10 +37,9 @@ AC_PROG_AWK
 AC_PROG_CC
 AC_HEADER_STDC
 
-#AC_PROG_LIBTOOL
-#AM_PROG_LIBTOOL
+AC_PROG_LIBTOOL
 
-GCC_WARNINGS="-Wall -Wwrite-strings \
+GCC_WARNINGS="-Wall -Wwrite-strings -Werror \
         -Wpointer-arith -Wcast-qual -Wcast-align \
         -Wstrict-prototypes -Wmissing-prototypes \
         -Wnested-externs -Winline -Wshadow"
@@ -130,14 +124,44 @@ AC_ARG_ENABLE(kernel,
      esac],[BUILD_KERNEL=0])
 AC_SUBST(BUILD_KERNEL)
 
+kernel_module_enabled=$(test $BUILD_KERNEL -gt 0 && echo yes || echo no)
+
 dnl packaging convenience
 AC_ARG_ENABLE(fakeroot,
 [  --enable-fakeroot=<path to packaging directory>], FAKEROOT=$enableval)
 AC_SUBST(FAKEROOT)
+
+#****************************************************************************/
+# PAM integration
+#****************************************************************************/
+AC_CHECK_LIB([pam], [pam_authenticate], PAM_LIBS="-lpam",
+             AC_MSG_FAILURE([Couldn't find -lpam]))
+
+AC_CHECK_LIB([pam_misc], [pam_getenv], PAM_MISC_LIBS="-lpam_misc",
+             AC_MSG_FAILURE([Couldn't find -lpam_misc]))
+
+AC_SUBST(PAM_LIBS)
+AC_SUBST(PAM_MISC_LIBS)
+
+pam_enabled="yes"
+
 
 AC_ARG_ENABLE(securedir,
 [  --enable-securedir=<path to location of PAMs> [default \$libdir/security]],
         SECUREDIR=$enableval, SECUREDIR=$libdir/security)
 AC_SUBST(SECUREDIR)
 
-AC_OUTPUT(Makefile utils/Makefile Make.Rules conf/Makefile )
+
+AC_OUTPUT(Makefile utils/Makefile Make.Rules conf/Makefile pam_chos/Makefile)
+
+AC_MSG_RESULT([
+
+*********************************************
+* PROJECT_NAME $VERSION configuration:
+*********************************************
+*   Enable kernel module.................$kernel_module_enabled
+*   Enable PAM support...................$pam_enabled
+*********************************************
+
+
+])

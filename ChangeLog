@@ -1,3 +1,9 @@
+2013-07-03  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* conf/Makefile.am, configure.ac, kernel/Makefile,
+	pam_chos/Makefile.am, utils/Makefile.am: Numerous build system
+	improvements.
+
 2013-07-02  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
 
 	* utils/chos.init: Add support for link creation in /chos/ and

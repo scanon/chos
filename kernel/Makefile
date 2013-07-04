@@ -12,6 +12,8 @@ MODMODE=644
 
 DKMS=$(FAKEROOT)/usr/src/chos-$(VERSION)
 
+DIST_FILES=Makefile Makefile.dkms chos.h dkms.conf find_fork.sh
+
 ifneq ($(KERNELRELEASE),)
 
 obj-m	+= $(MOD)
@@ -61,3 +63,6 @@ clean:
 
 test:
 	/sbin/insmod chos.o
+
+distdir:
+	$(INSTALL) -m 644 $(DIST_FILES) $(distdir)
