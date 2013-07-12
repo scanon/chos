@@ -252,6 +252,7 @@ char ** set_env() {
 }
 
 char * check_chos(char *name) {
+  extern FILE *yyin;
   FILE *cfile;
   static char buffer[MAXLINE];
   struct stat st;
@@ -279,38 +280,9 @@ char * check_chos(char *name) {
     return NULL;
   }
 
-  start=0;
-  while(retpath==NULL){
-    path=fgets(buffer,MAXLINE,cfile);
-    if (path==NULL)
-      break;
-    if (buffer[0]=='#' || buffer[0]=='\n')
-      continue; 
-/* Remove new line */
-    while(*path!=0 && *path!='\n')
-  path++;
-    *path=0;
-    if (start){
-      if (buffer[0]=='%')
-  break;
-      path=buffer;
-      while (*path!=':' && *path!=0){
-  path++;
-      }
-      if (*path==0){
-        continue;
-      }
-      *path=0;
-      path++;
-      if (strcmp(buffer,name)==0){
-        retpath=path;
-        break;
-      }
-    }
-    else if (strcmp(buffer,SHELLHEAD)==0){
-      start=1;
-    }
-  }
+  yyin = cfile;
+
+  yyparse();
   fclose(cfile);
   return retpath;
 }

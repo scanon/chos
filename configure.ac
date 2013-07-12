@@ -38,6 +38,9 @@ AC_PROG_CC
 AC_HEADER_STDC
 
 AC_PROG_LIBTOOL
+AC_CHECK_PROGS(YACC,"yacc",[${am_missing_run} yacc])
+AC_CHECK_PROGS(LEX,"lex",[${am_missing_run} lex])
+AC_SUBST(LEX_OUTPUT_ROOT, lex.yy)
 
 GCC_WARNINGS="-Wall -Wwrite-strings -Werror \
         -Wpointer-arith -Wcast-qual -Wcast-align \
