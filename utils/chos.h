@@ -30,16 +30,42 @@
 #define CHOSKOVERSION "/proc/chos/version"
 
 #define ENVHEAD "%ENV"
+#define SHELLHEAD "%SHELLS"
 
 #define MAX_OS 80
 
-int argmatch(const char *arg, const char *match);
+typedef struct chos_env {
+    char *name;
+    char *path;
+    struct chos_env *next;
+} chos_env;
+
+typedef struct chos_config {
+    chos_env *envs;
+    char **env_vars;
+} chos_config;
+
+char **set_env(void);
 char *check_chos(char *name);
+int argmatch(const char *arg, const char *match);
 int chos_parse_args(int argc, char **argv);
+
+int configure_chos(void);
+int read_chos_file(char *dir,char *osenv,int max);
+
+void chos_debug(char *msg, ...);
+void chos_err(char *msg, ...);
+
+/* Functions to manipulate the current CHOS context mapping */
+int get_multi(char *os);
+int set_multi(char *os);
+
+/* Functions to print usage and version information */
 void chos_print_usage(void);
 void chos_print_version(void);
-int configure_chos(void);
-int get_multi(char *os);
-char **set_env(void);
-int set_multi(char *os);
+
+chos_env *chos_create_env(char *name);
+static const char *chos_root = "/chos/";
+static const char *chos_config_prefix = "/etc/chos.d/";
+static const int chos_debug_flag = 0;
 

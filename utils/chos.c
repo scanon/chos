@@ -39,6 +39,23 @@
 
 #define MAXLINE 80
 
+void chos_debug(char *msg, ...) {
+    va_list argv;
+    va_start(argv,msg);
+    /* vsyslog(LOG_ERR,msg,argv); */
+    if(chos_debug_flag)
+      vfprintf(stderr,msg,argv);
+    va_end(argv);
+}
+
+void chos_err(char *msg, ...) {
+    va_list argv;
+    va_start(argv,msg);
+    /* vsyslog(LOG_ERR,msg,argv); */
+    vfprintf(stderr,msg,argv);
+    va_end(argv);
+}
+
 int main(int argc, char *argv[]) {
    struct passwd *pw;
    FILE *stream;
@@ -103,8 +120,6 @@ int main(int argc, char *argv[]) {
     }
 }
 
-int configure_chos() {
-}
 
 int is_chrooted(char *chos) {
 /*
@@ -149,142 +164,6 @@ int get_multi(char *os) {
      os[len]=0;
    }
    return 0;
-}
-
-/*
- * This function looks at the /etc/chos.conf file and sets variables
- * listed in the %ENV section based on the environment of the calling shell.
- */
-char ** set_env() {
-  FILE *stream;
-  char **env;
-  char *value;
-  char *var;
-  char buffer[MAXLINE];
-  int ret=0;
-  int count=1;
-  int setc=0;
-  int start=0;
-  int len;
-
-  stream=fopen(CHOSENV,"r");
-  if (!stream){
-
-    fprintf(stderr,"Unable to open conf file (%s)\n",CHOSENV);
-    perror("chos.conf");
-    return NULL; 
-  }
-
-/* We need to count the number of variables first. */
-  start=0;
-  while(1){
-    value=fgets(buffer,MAXLINE,stream);
-    if (value==NULL)
-      break;
-    if (buffer[0]=='#' || buffer[0]=='\n')
-      continue; 
-/* Remove new line */
-    while(*value!=0 && *value!='\n')
-  value++;
-    *value=0;
-    if (start){
-      count++;
-      if (buffer[0]=='%')
-  break;
-    }
-    else if (strcmp(buffer,ENVHEAD)==0){
-      start=1;
-    }
-  }
-
-/* Allocate an array of pointers */
-  env=(char **)malloc(sizeof(char *)*count);
-  if (env==NULL){
-    fprintf(stderr,"Failed to allocate memory for env\n");
-    return NULL;
-  }
-  rewind(stream);
-  start=0;
-  while(1){
-    value=fgets(buffer,MAXLINE,stream);
-    if (value==NULL)
-      break;
-    if (buffer[0]=='#' || buffer[0]=='\n')
-      continue; 
-/* Remove new line */
-    while(*value!=0 && *value!='\n')
-  value++;
-    *value=0;
-    if (start){
-      count++;
-      if (buffer[0]=='%')
-  break;
-      value=getenv(buffer);
-      if (strcmp(buffer,"PATH")==0){
-        env[setc]=DEFPATH;
-        setc++;
-      }
-      else if (value!=NULL && setc<count){
-        len=strlen(buffer)+strlen(value)+2;
-        var=(char *)malloc(len);     /* Allocate space for entry */
-        if (var==NULL){
-          fprintf(stderr,"failed to allocate memory\n");
-          return;
-        }
-        sprintf(var,"%s=%s",buffer,value);
-        env[setc]=var;
-        setc++;
-      }
-    }
-    else if (strcmp(buffer,ENVHEAD)==0){
-      start=1;
-    }
-  }
-  if (setc<count){
-    env[setc]=NULL;
-  }
-  else{
-    fprintf(stderr,"Unable to terminate environment\n");
-    return NULL;
-  }
-  fclose(stream);
-  return env; 
-}
-
-char * check_chos(char *name) {
-  extern FILE *yyin;
-  FILE *cfile;
-  static char buffer[MAXLINE];
-  struct stat st;
-  char *path;
-  char *retpath=NULL;
-  int ret=0;
-  int count=1;
-  int setc=0;
-  int start=0;
-  int len;
-  int han;
-
-  cfile=fopen(CHOSCONF,"r");
-  if (cfile==NULL){
-    fprintf(stderr,"Error opening config file %s\n",CHOSCONF);
-    return NULL;
-  }
-  han=fileno(cfile);
-  if (fstat(han,&st)!=0){
-    fprintf(stderr,"Error accessing config file %s\n",CHOSCONF);
-    return NULL;
-  }
-  else if (st.st_uid!=0){
-    fprintf(stderr,"Error: %s must be owned by root\n",CHOSCONF);
-    return NULL;
-  }
-
-  yyin = cfile;
-
-  yyparse();
-  fclose(cfile);
-  return retpath;
 }
 
 int argmatch(const char *arg, const char *match) {

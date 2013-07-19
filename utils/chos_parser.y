@@ -5,18 +5,13 @@
  
 int line=1;
 
-void yyerror(const char *str)
-{
+void yyerror(const char *str) {
         fprintf(stderr,"Parse error on line %d: %s\n",line,str);
 }
  
-int yywrap()
-{
+int yywrap() {
         return 1;
 } 
-  
-
-
 %}
 
 
@@ -25,6 +20,7 @@ int yywrap()
 %token NAME
 %token SHELLHEADER
 
+
 %%
 
 sections:                   /* \0 */
@@ -32,32 +28,27 @@ sections:                   /* \0 */
                             ;
 
 section:                    SHELLHEADER shell_config_entries
-                            { $$ = $2; }
                             | ENVHEADER env_config_entries
-                            { $$ = $2; }
                             ;
 
 shell_config_entries:       /* \0 */
                             |
                             shell_config_entries shell_config_entry
-                            { $$ = $2; }
                             ; 
 
 shell_config_entry:         NAME DELIM NAME
                             {
-                                printf("(%s <-> %s)\n",$3, $1);
+                                chos_append_env($1, $3, "");
                             }
                             ;
 
 env_config_entries:         /* \0 */
                             |
                             env_config_entries env_config_entry
-                            { $$ = $2; }
                             ; 
 
 env_config_entry:           NAME
                             {
-                                printf("(ENV: %s)\n", $1);
+                                chos_append_env_var($1);
                             }
                             ;
-
