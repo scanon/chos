@@ -4,7 +4,12 @@
 #
 
 # Version
-VERSION=0.11.2
+CONFIGURE_TEMPLATE=configure.ac
+
+VERSION=$(for _VERSION_FRAGMENT in MAJOR MINOR MICRO; do
+    _LINE_FRAGMENT='^\s*m4_define\s*(\s*PROJECT_'${_VERSION_FRAGMENT}'\s*,\s*'
+    sed -n 's/'${_LINE_FRAGMENT}'\(\S\+\)).*$/\1/p' $CONFIGURE_TEMPLATE
+done | tr '\n' '.' | sed 's/\.$//')
 
 # Variables
 #

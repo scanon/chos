@@ -1,5 +1,5 @@
 %define module chos
-%define version 0.11.2
+%define version 0.12.0rc1
 %define release 1
 
 #
@@ -26,7 +26,7 @@ Name: %{module}
 Version: %{version}
 Release: %{release}
 Vendor: PDSF
-License: GPL
+License: BSD
 Packager: Shane Canon <canon@nersc.gov>
 Group: System Environment/Base
 Source0: %{module}-%{version}.tgz
@@ -86,10 +86,9 @@ install -m 644 %{SOURCE1} $RPM_BUILD_ROOT/usr/src/%{module}-%{version}
 
 mkdir -p $RPM_BUILD_ROOT/%{_initrddir}
 install -m755  utils/chos.init $RPM_BUILD_ROOT/%{_initrddir}/chos
-mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
-install -m755  conf/chos.sys $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/chos
 
 mkdir $RPM_BUILD_ROOT/chos
+rm -f $RPM_BUILD_ROOT/%{_lib}/security/pam_chos.la
 #./utils/mkchos $RPM_BUILD_ROOT/chos
 
 
@@ -117,12 +116,16 @@ fi
 %config /etc/chos
 %config /etc/chos.conf
 %config /etc/sysconfig/chos
-/%{_lib}/security/pam_*.so
+/%{_lib}/security/pam_chos*.so
+#/%{_lib}/security/pam_chos.la
 %{_mandir}/man1/chos.1*
 %{_mandir}/man8/pam_chos.8*
 %config /%{_initrddir}/*
 %defattr(755,root,root)
-/usr/bin/chos
+%{_bindir}/chos
+%config /etc/sysconfig/chos
+%{_bindir}/job_starter
+%{_bindir}/pam_job_starter
 
 
 %pre

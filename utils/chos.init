@@ -130,8 +130,8 @@ unmountlocal() {
 	if [ ! -z "$BINDMOUNT" ] ; then
 		for d in $(echo $BINDMOUNT|sed 's/ /\n/g'|sort -r)
 		do
-			umount /chos/$d
 			umount /chos/local/$d
+			umount /chos/$d
 		done
 	umount /chos/local
 	fi

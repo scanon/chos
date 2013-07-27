@@ -1,0 +1,3 @@
+CHOS=/etc/chos
+BINDMOUNT="/dev /dev/shm /dev/pts /sys /proc /var /var/log /root /boot /sys /proc /selinux"
+MAKELINKS="no"

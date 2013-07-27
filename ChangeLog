@@ -1,3 +1,14 @@
+2013-07-27  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* build_rpm, conf/Makefile.am, configure.ac, kernel/dkms.conf,
+	pam_chos/Makefile.am, specs/chos.spec: Numerous build system
+	improvements
+
+	* conf/chos.sys: Rename to conf/sysconfig/chos and add MAKELINKS
+	option
+
+	* utils/chos.init: Minor improvements to umountlocal functionality
+
 2013-07-03  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
 
 	* conf/Makefile.am, configure.ac, kernel/Makefile,

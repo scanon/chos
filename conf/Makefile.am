@@ -1,1 +1,4 @@
-sysconf_DATA = chos chos.conf chos.sys
+sysconfigdir = $(sysconfdir)/sysconfig
+sysconfig_DATA = sysconfig/chos
+
+sysconf_DATA = chos chos.conf 
