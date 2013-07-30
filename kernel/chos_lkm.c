@@ -57,6 +57,7 @@
  *  0.11.2 - Explicitly set new processes' CHOS links after do_fork()
  *               returns to handle some scenarios where child
  *               processes quickly fork new children and then exit
+ *  0.12.0 - Improve several log messages
  *
  */
 
@@ -366,7 +367,7 @@ int my_chroot(const char *path)
   mem=get_fs(); 
   set_fs(KERNEL_DS);
   if ((retval=sys_chroot(path))!=0){
-    printk("chroot failed\n");
+    printk("MODULE_NAME: chroot failed\n");
   }
 #ifdef USE_CRED
   (*(KERNEL_CAP_T *)&current->cred->cap_effective)=capback;
@@ -425,9 +426,9 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
 
   if (!is_valid_path(text)){
 #ifdef USE_CRED
-    printk("Attempt to use invalid path. uid=%d (Requested %s)\n",current->cred->uid,text);
+    printk("MODULE_NAME: Attempt to use invalid path. uid=%d (Requested %s)\n",current->cred->uid,text);
 #else
-    printk("Attempt to use invalid path. uid=%d (Requested %s)\n",current->uid,text);
+    printk("MODULE_NAME: Attempt to use invalid path. uid=%d (Requested %s)\n",current->uid,text);
 #endif
     return -ENOENT;
   }
@@ -468,12 +469,12 @@ int write_savestate(struct file* file, const char* buffer, unsigned long count, 
 {
   if (count>1){
     if (buffer[0]=='1'){
-      printk("chos save state enabled\n");
-      printk("chos save state address = 0x%lx\n",(long)ch);
+      printk("MODULE_NAME: save state enabled\n");
+      printk("MODULE_NAME: save state address = 0x%lx\n",(long)ch);
       save_state=1;
     }
     else{
-      printk("chos save state disabled\n");
+      printk("MODULE_NAME: save state disabled\n");
       save_state=0;
     }
   }
@@ -553,7 +554,7 @@ int write_valid(struct file* file, const char* buffer, unsigned long count, void
     return -EPERM;
   }
   if (buffer[0]=='-'){
-    printk("Reseting\n");
+    printk("MODULE_NAME: Resetting\n");
     resetvalid();
   }
   else{
@@ -674,7 +675,7 @@ int init_chos(void)
 
   ch=(struct chos *)kmalloc(sizeof(struct chos),GFP_KERNEL);
   if (ch==NULL){
-    printk("Unable to allocate chos handle\n");
+    printk("MODULE_NAME: Unable to allocate chos handle\n");
     return -1;
   }
 
@@ -718,9 +719,9 @@ int init_chos(void)
 #ifdef SCT
   orig_sys_exit=sys_call_table[__NR_exit];
   orig_sys_exit_group=sys_call_table[__NR_exit_group];
-  printk("sys_call_table=%lx\n",(unsigned long)sys_call_table);
-  printk("orig exit=%lx\n",(unsigned long)orig_sys_exit);
-  printk("new exit=%lx\n",(unsigned long)my_sys_exit);
+  printk("MODULE_NAME: sys_call_table=%lx\n",(unsigned long)sys_call_table);
+  printk("MODULE_NAME: orig exit=%lx\n",(unsigned long)orig_sys_exit);
+  printk("MODULE_NAME: new exit=%lx\n",(unsigned long)my_sys_exit);
 //  change_page_attr(virt_to_page(sys_call_table),1,PAGE_KERNEL);
 //  global_flush_tlb();
   sys_call_table[__NR_exit]=my_sys_exit;
@@ -767,19 +768,19 @@ int init_module(void)
   struct proc_dir_entry *validfile;
 
   if (table!=0){
-    printk("Recoverying table from 0x%lx\n",table);
+    printk("MODULE_NAME: Recoverying table from 0x%lx\n",table);
     if (recover_chos(table)!=0){
-      printk("Unable to recover.  Bad magic\n");
+      printk("MODULE_NAME: Unable to recover.  Bad magic\n");
       return -1;
     }
     else{
-      printk("Recovery successful.\n");
+      printk("MODULE_NAME: Recovery successful.\n");
     }
 
   }
   else{
     if (init_chos()!=0){
-      printk("<0>ERROR allocating tables\n");
+      printk("MODULE_NAME: <0>ERROR allocating tables\n");
       return -1;
     }
   }
@@ -832,10 +833,10 @@ int init_module(void)
 
   /* This is incomplete at this time */
 fail_entry:
-  printk("<1>ERROR creating setchos\n");
+  printk("MODULE_NAME: <1>ERROR creating setchos\n");
   remove_proc_entry(MODULE_NAME,NULL);
 fail_dir:
-  printk("<1>ERROR creating chos directory\n");
+  printk("MODULE_NAME: <1>ERROR creating chos directory\n");
   return -1;
 }
 
@@ -876,9 +877,9 @@ void cleanup_module(void)
     kfree(ch);
   }
   else{
-    printk("State saved at 0x%lx\n",(long)ch);
+    printk("MODULE_NAME: State saved at 0x%lx\n",(long)ch);
   }
-  printk("Module cleanup. Chos entry removed.\n");
+  printk("MODULE_NAME: Module cleanup. Chos entry removed.\n");
 }
 
 #ifdef WRAP_DOFORK  
@@ -897,7 +898,7 @@ int init_do_fork(void)
 #ifdef LENGTH
   for (i=0;i<LENGTH;i++,ptr++){
     if (*ptr!=opcode[i]){
-      printk("Mismatch to trap do_fork %x %x\n",*ptr,opcode[i]);
+      printk("MODULE_NAME: Detected code mismatch when attempting to trap do_fork: %x %x\n",*ptr,opcode[i]);
       return -1;
     }
   }
