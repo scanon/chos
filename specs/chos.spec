@@ -6,12 +6,15 @@
 # DKMS is a utility for managing modules outside of the kernel.
 # It can be obtained from http://linux.dell.com/dkms/dkms.html
 # Set the value to 1 if you plan to use dkms.
-%define usedkms 1
+%define usedkms 0
 %define usedkms_skip 0
 # Optionally, you can distribute a pre-built binary tar file with the
 # rpm.  The systems wouldn't need the kernel source then.
 %define withdkmstarfile 0
 %define dkmstarfilever 2.4.20-31psmp
+
+# Install module source even if dkms is not enabled
+%define with_module_src 1
 
 #
 # Set the value to 1 if you wish to build a kernel module.
@@ -36,9 +39,7 @@ Source1: %{module}-%{version}-kernel%{dkmstarfilever}.dkms.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root/
 %if %{usedkms}
 Requires: dkms >= 1.00
-%endif
-%if %{buildmod}
-BuildRequires: kernel-devel
+%define with_module_src 1
 %endif
 Requires: bash
 
@@ -71,10 +72,13 @@ if [ "$RPM_BUILD_ROOT" != "/" ]; then
 fi
 %makeinstall
 
-%if %{usedkms}
+%if %{with_module_src}
 cd kernel
 make installdkms
 cd ..
+%endif
+
+%if %{usedkms}
 #mkdir -p $RPM_BUILD_ROOT/usr/src/%{module}-%{version}/
 #mkdir -p $RPM_BUILD_ROOT/usr/src/%{module}-%{version}/patches
 #mkdir -p $RPM_BUILD_ROOT/usr/src/%{module}-%{version}/redhat_driver_disk
@@ -101,7 +105,7 @@ fi
 %files
 %defattr(-,root,root)
 
-%if %{usedkms}
+%if %{with_module_src}
 /usr/src/%{module}-%{version}/
 %endif
 %if %{buildmod}
