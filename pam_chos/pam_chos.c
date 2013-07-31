@@ -64,6 +64,7 @@ pam_chos_config *init_pam_chos_config(void) {
 
   pam_chos_config *cfg =
     (pam_chos_config *)malloc(sizeof(pam_chos_config));
+  syslog(LOG_ERR, "cfg ptr: %p\n", cfg);
 
   return memcpy(cfg, &pam_chos_config_default,
     sizeof(pam_chos_config));
@@ -81,17 +82,19 @@ int argmatch(const char *arg, const char *match) {
 void parse_pam_chos_args(pam_chos_config *args, int argc, const char
         **argv) {
 
+  char **argptr = argv;
+
   while(argc--) {
-    if(argmatch(argv[0],"user_conf_file=")) {
+    if(argmatch(argptr[0],"user_conf_file=")) {
       args->user_conf_file =
-        strndup(argv[0]+strlen("user_conf_file="),MAX_LEN);
+        strndup(argptr[0]+strlen("user_conf_file="),MAX_LEN);
     }
 
-    if(argmatch(argv[0],"fail_to_default=")) {
+    if(argmatch(argptr[0],"fail_to_default=")) {
       args->fail_to_default =
-        atoi(argv[0]+strlen("fail_to_default="));
+        atoi(argptr[0]+strlen("fail_to_default="));
     }
-    argv++;
+    argptr++;
   }
 }
 
@@ -108,6 +111,9 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
   char envvar[50];
   int usedefault=0;
   pam_chos_config *cfg;
+  unsigned int oldeuid;
+
+  oldeuid = geteuid();
   
   openlog("pam_chos", LOG_PID, LOG_AUTHPRIV);
   
@@ -125,9 +131,11 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     return ret;
   }
 
-
   cfg = init_pam_chos_config();
   parse_pam_chos_args(cfg, argc, argv);
+
+
+  seteuid(pw->pw_uid);
 
   if ((env=getenv("CHOS"))){
     strncpy(osenv,env,MAXLINE);
@@ -166,6 +174,7 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
 
   sprintf(envvar,"CHOS=%.40s",osenv);
   pam_putenv(pamh, envvar);
+  seteuid(oldeuid);
   closelog();
   ret = PAM_SUCCESS;
   return ret;
@@ -288,14 +297,18 @@ int read_chos_file(char *user_conf_file, char *dir, char *osenv)
     osenv[count]=0;
     close(conf);
   }
-  if (count==0){
-    osenv = strdup(DEFAULT_ENV_NAME);
-    count=7;
+  if (count==0) {
+    char *default_env_name = strndup(DEFAULT_ENV_NAME,MAXLINE-1);
+    count = strlen(default_env_name);
+    strncpy(osenv, default_env_name, count+1);
+    free(default_env_name);
   }
 
   for (i=0;i<count;i++){
-    if (osenv[i]=='\n')break;
+    if ((osenv[i]=='\n') || (osenv[i]=='\0') )
+      break;
   }
+
   osenv[i]=0;
   return count;
 }
