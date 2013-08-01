@@ -6,7 +6,7 @@
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
-#define MY_MODULE_VERSION "0.11.2"
+#define MY_MODULE_VERSION "0.12.0"
 
 /*
  * chos, Linux Kernel Module.
