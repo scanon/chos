@@ -325,7 +325,29 @@ int argmatch(const char *arg, const char *match) {
 }
 
 void chos_print_version(void) {
-  printf("CHOS version %s\n",VERSION);
+
+
+  char kernel_version[MAXLINE];
+  FILE *kernel_version_file;
+
+  kernel_version_file = fopen(CHOSKOVERSION,"r");
+  if (!kernel_version_file) {
+    snprintf(kernel_version, MAXLINE-1,
+      "%s not readable: %s.",
+      CHOSKOVERSION, strerror(errno));
+  }
+  else {
+    if(!(fgets(kernel_version, MAXLINE, kernel_version_file))){
+      snprintf(kernel_version, MAXLINE-1,
+        "%s not readable: %s.",
+        CHOSKOVERSION, strerror(errno));
+    }
+  }
+
+  printf("CHOS userland component version:\t%s\n",VERSION);
+  printf("CHOS kernel component version:  \t%s\n",kernel_version);
+
+  return;
 }
 
 void chos_print_usage(void) {
