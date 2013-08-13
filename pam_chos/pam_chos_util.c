@@ -29,17 +29,16 @@
 #include "../config.h"
 
 
-void sanitize_name(char *s, int length) {
-  sanitize_str(s, length, 0);
-  return;
+int sanitize_name(char *s, int length) {
+  return sanitize_str(s, length, 0);
 }
 
-void sanitize_path(char *s, int length) {
-  sanitize_str(s, length, 1);
-  return;
+int sanitize_path(char *s, int length) {
+  return sanitize_str(s, length, 1);
 }
 
-void sanitize_str(char *s, int length, int is_path) {
+int sanitize_str(char *s, int length, int is_path) {
+  int was_clean = 1;
   int i;
   for (i = 0; i < length; i++) {
     if (s[i] == '\n') {
@@ -47,9 +46,10 @@ void sanitize_str(char *s, int length, int is_path) {
     }
     if (!(is_valid_char(s[i], is_path))) {
       s[i]='_';
+      was_clean = 0;
     }
   }
-  return;
+  return was_clean;
 }
 
 int is_valid_char(char c, int is_path) {
@@ -69,5 +69,11 @@ int is_valid_char(char c, int is_path) {
 
   /* syslog(LOG_ERR,"char %c,%d read %d\n",c,c,is_valid); */
   return is_valid;
+}
+
+/* Read a line of up to MAXLINE-1 from an open FD */
+/* Sufficient storage must be available at *dest */
+char *read_line_from_file(FILE *f, char *dest) {
+  return fgets(dest, MAXLINE, f);
 }
 

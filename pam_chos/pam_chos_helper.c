@@ -21,9 +21,7 @@
  * reproduce, prepare derivative works, distribute copies to the public,
  * perform publicly and display publicly, and to permit others to do so.
  */
-#define _GNU_SOURCE
 
-#include "pam_chos.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -34,23 +32,28 @@
 
 #include <sys/stat.h>
 #include "../config.h"
+#include "pam_chos.h"
 
-pam_chos_config *init_pam_chos_config(void) {
+pam_chos_config *init_pam_chos_config(pam_chos_config *cfg) {
 
-  pam_chos_config pam_chos_config_default = {
-    .user_conf_file = strdup(USER_CONF_FILE_DEFAULT),
-    .fail_to_default = 0
-  };
+  if(!cfg) {
+    return NULL;
+  }
 
-  pam_chos_config *cfg =
-    (pam_chos_config *)malloc(sizeof(pam_chos_config));
+  if(!(cfg->user_conf_file = strdup(USER_CONF_FILE_DEFAULT))) {
+    return NULL;
+  }
 
-  return memcpy(cfg, &pam_chos_config_default,
-    sizeof(pam_chos_config));
+  cfg->fail_to_default = FAIL_TO_DEFAULT;
+
+  return cfg;
 }
 
 int argmatch(const char *arg, const char *match) {
   if(strlen(arg) < strlen(match)+1) {
+    /* The length of the potential match is too short to include a
+     * value
+     */
     return 0;
   }
   else {
@@ -58,22 +61,44 @@ int argmatch(const char *arg, const char *match) {
   }
 }
 
-void parse_pam_chos_args(pam_chos_config *args, int argc, const char
+int parse_pam_chos_args(pam_chos_config *args, int argc, const char
         **argv) {
 
+  char val;
 
   while(argc--) {
+
     if(argmatch(argv[0],"user_conf_file=")) {
       args->user_conf_file =
         strndup(argv[0]+strlen("user_conf_file="),MAX_LEN);
+      if(!(args->user_conf_file)) {
+        syslog(LOG_ERR,"Failed to parse value for user_conf_file\n");
+      }
     }
 
     if(argmatch(argv[0],"fail_to_default=")) {
-      args->fail_to_default =
-        atoi(argv[0]+strlen("fail_to_default="));
+      if( (val = *(argv[0]+strlen("fail_to_default="))) ) {
+        switch(val)  {
+          case '0':
+            args->fail_to_default = 0;
+            break;
+          case '1':
+            args->fail_to_default = 1;
+            break;
+          default:
+            syslog(LOG_ERR,"Invalid value for fail_to_default\n");
+            return -1;
+        }
+      }
+      else {
+        syslog(LOG_ERR, "Failed to parse configuration\n");
+        return -1;
+      }
     }
+
     argv++;
   }
+  return 1;
 }
 
 int get_chos_info(int argc, const char **argv, int fd, char *user_conf_dir) {
@@ -81,14 +106,22 @@ int get_chos_info(int argc, const char **argv, int fd, char *user_conf_dir) {
   char osenv[MAXLINE+1];
   char *os;
   const char *env;
-  int ret = 0;
   FILE *f;
+  pam_chos_config cfg;
 
-  pam_chos_config *cfg;
-  cfg = init_pam_chos_config();
-  parse_pam_chos_args(cfg, argc, argv);
+  if(!(init_pam_chos_config(&cfg))) {
+    syslog(LOG_ERR, "Failed to initialize configuration\n");
+    return -1;
+  }
 
-  read_chos_file(cfg->user_conf_file, user_conf_dir, osenv);
+  if(parse_pam_chos_args(&cfg, argc, argv) != 1) {
+    syslog(LOG_ERR, "Failed to parse configuration\n");
+    return -1;
+  }
+
+  read_chos_file(cfg.user_conf_file, user_conf_dir, osenv);
+
+  free(cfg.user_conf_file);
 
 
   if ((env=getenv("CHOS"))){
@@ -103,17 +136,15 @@ int get_chos_info(int argc, const char **argv, int fd, char *user_conf_dir) {
   }
   os=check_chos(osenv);
 
-  free(cfg->user_conf_file);
-  free(cfg);
 
   if (os == NULL) {
     if ( (strcmp(osenv,DEFAULT_ENV_NAME)==0) || 
-       (cfg->fail_to_default > 0) ) {
+       (cfg.fail_to_default > 0) ) {
       /* Fail back to the default CHOS */
       syslog(LOG_WARNING,
         "Warning: requested os (%s) is not recognized; using default (fail_to_default=%d).\n",
-        osenv, cfg->fail_to_default);
-      os=check_chos(strdupa(DEFAULT_ENV_NAME));
+        osenv, cfg.fail_to_default);
+      os=check_chos(DEFAULT_ENV_NAME);
     }
     else {
       /* Try the (likely invalid) environment name. */

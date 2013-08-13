@@ -6,6 +6,8 @@
 #define SETCHOS "/proc/chos/setchos"
 #define USER_CONF_FILE_DEFAULT ".chos"
 
+#include <stdio.h>
+
 /* Configuration structure for pam_chos */
 typedef struct pam_chos_config {
   /*
@@ -27,16 +29,22 @@ char * check_chos(char *name);
 
 int read_chos_file(char *user_conf_file, char *dir, char *osenv);
 
-pam_chos_config *init_pam_chos_config(void);
+pam_chos_config *init_pam_chos_config(pam_chos_config *cfg);
 
-void parse_pam_chos_args(pam_chos_config *args, int argc, const char
+int parse_pam_chos_args(pam_chos_config *args, int argc, const char
   **argv);
 
 int argmatch(const char *arg, const char *match);
 
 int is_valid_char(char c, int is_path);
 
-void sanitize_name(char *s, int length);
-void sanitize_path(char *s, int length);
-void sanitize_str(char *s, int length, int is_path);
-char *read_line_from_fd(FILE *f, char *dest);
+int sanitize_name(char *s, int length);
+
+int sanitize_path(char *s, int length);
+
+int sanitize_str(char *s, int length, int is_path);
+
+char *read_line_from_file(FILE *f, char *dest);
+
+int get_chos_info(int argc, const char **argv, int fd, char *user_conf_dir);
+
