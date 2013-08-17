@@ -17,7 +17,6 @@ if  [ -e $SM ] ; then
   address=`grep do_fork$ $SM|grep -v idle|sed 's/ .*//'`
   if [ -e $KB ] ; then
 
-    # TODO: Needs review
     # ffffffff8106a760:       55                      push   %rbp
     # ffffffff8106a761:       48 89 e5                mov    %rsp,%rbp
     # ffffffff8106a764:       48 81 ec f0 00 00 00    sub    $0xf0,%rsp
@@ -43,6 +42,7 @@ if  [ -e $SM ] ; then
       echo "#define END_ADD    0x$end" >> $INC
     else
       echo "#define START_ADD  0x$address" > $INC
+      echo '#ifdef RHEL_MAJOR' >> $INC
       if [ $(uname -m|grep -c x86_64) -gt 0 ] ; then
         echo '#if LINUX_VERSION_CODE == KERNEL_VERSION(2,6,18) && RHEL_MAJOR == 5' >> $INC
         echo "#define LENGTH    0xC" >> $INC
@@ -57,6 +57,14 @@ if  [ -e $SM ] ; then
         echo 'unsigned char opcode[] =   "\x55\x89\xcd\x57\x89\xc7\x56";' >> $INC
         echo '#endif' >> $INC
       fi
+      if [ $(uname -m|grep -c x86_64) -gt 0 ] ; then
+        echo '#else' >> $INC
+        echo '#if LINUX_VERSION_CODE == KERNEL_VERSION(2,6,32)' >> $INC
+        echo "#define LENGTH    0x3a" >> $INC
+        echo 'unsigned char opcode[] =   "\x41\x57\x41\x56\x49\x89\xce\x41\x55\x49\x89\xfd\x41\x54\x55\x4c\x89\xcd\x53\x48\x89\xd3\x48\x83\xec\x78\x65\x48\x8b\x04\x25\x28\x00\x00\x00\x48\x89\x44\x24\x68\x31\xc0\xf7\xc7\x00\x00\x00\x10\x48\x89\x74\x24\x20\x4c\x89\x44\x24\x18";' >> $INC
+        echo '#endif' >> $INC
+      fi
+      echo '#endif /* RHEL_MAJOR */' >> $INC
     fi
   fi
   CHROOT=`grep ' sys_chroot' $SM | awk '{print $1}'`
