@@ -37,26 +37,22 @@
  * - no chos
  */
 
-#define _GNU_SOURCE
 #define  PAM_SM_SESSION
+#define _GNU_SOURCE
 
 #include <errno.h>
-#include <fcntl.h>
 #include <grp.h>
-#include <limits.h>
 #include <pwd.h>
 #include <security/pam_modules.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <syslog.h>
 #include <unistd.h>
 
-#include "pam_chos.h"
 #include "../config.h"
+#include "pam_chos.h"
 
 
 
@@ -64,146 +60,183 @@
 PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
            int argc, const char **argv)
 {
-  int ret = PAM_SESSION_ERR;
-  int onerr = PAM_SUCCESS;
+
   char const *user;
-  FILE *child_pipe_file;
-  struct passwd *pw;
-  struct group *gr;
+
   char env_path[MAXLINE+1];
+  char envvar[MAXLINE+1];
   char osenv[MAXLINE+1];
-  char envvar[50];
-  int usedefault=0;
+
   int child_pid, child_status;
   int child_pipe[2];
+  int ret = PAM_SESSION_ERR;
 
+  struct group const *gr;
+  struct passwd const *pw;
+
+  openlog(PAM_CHOS_MODULE_NAME, LOG_PID, LOG_AUTHPRIV);
   
-  openlog("pam_chos", LOG_PID, LOG_AUTHPRIV);
-  
+  /* Retrieve user information from PAM */
   if((ret = pam_get_user(pamh, &user, NULL)) != PAM_SUCCESS) {
-    syslog(LOG_ERR, "can't get username: %s", pam_strerror(pamh, ret));
-    return ret;
+    syslog(LOG_ERR, "pam_get_user failed: %s\n", pam_strerror(pamh, ret));
+    return(ONERR);
   }
   
-  pw=getpwnam(user);
-
+  /* Retrieve the passwd structure for this user. */
+  errno = 0;
+  pw = getpwnam(user);
   if (pw==NULL) {
-    syslog(LOG_ERR,"getpwuid failed for %d: %s\n",getuid(), strerror(errno));
-    return onerr;
+    syslog(LOG_ERR,"getpwnam failed for %d: %s\n",getuid(), strerror(errno));
+    return(ONERR);
   }
 
-  /* UID 0 is excepted from automatic CHOS environment activation */
+  /* UID 0 is excepted from automatic CHOS environment activation.
+   * Immediately stop processing for UID 0. */
   if (pw->pw_uid==0){
-    return PAM_SUCCESS;
+    return(PAM_SUCCESS);
   }
 
-  gr = getgrnam(user);
-  if (gr==NULL) {
-    syslog(LOG_ERR,"getpwuid failed for %d: %s\n",getuid(), strerror(errno));
-    return onerr;
-  }
-
+  /* Create a pipe for communication with our child process. */
   if(pipe(child_pipe) != 0) {
     syslog(LOG_ERR,"pipe() failed: %s,\n",strerror(errno));
-    return onerr;
+    return(ONERR);
   }
 
+  /* Fork a child.  This child will drop privileges and determine the
+   * appropriate CHOS environment to set. */
   child_pid = fork();
 
-  /* Fork failed */
   if (child_pid == -1) {
+    /* Fork failed */
     syslog(LOG_ERR,"fork() failed: %s\n",strerror(errno));
-    close(child_pipe[0]);
-    close(child_pipe[1]);
-    return onerr;
+
+    if(!(close(child_pipe[0]) == 0)) {
+      syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+    }
+
+    if(!(close(child_pipe[1]) == 0)) {
+      syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+    }
+
+    return(ONERR);
   }
   else if (child_pid == 0) {
     /* Child process */
+    if(!(close(child_pipe[0]) == 0)) {
+      syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+      exit(-1);
+    }
 
-    close(child_pipe[0]);
+    /* Retrieve the group structure for this user. */
+    errno = 0;
+    gr = getgrnam(user);
+    if (gr==NULL) {
+      syslog(LOG_ERR,"getgrnam failed for %d: %s\n",getuid(), strerror(errno));
+      if(!(close(child_pipe[1]) == 0)) {
+        syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+      }
+      exit(-1);
+    }
 
     /* Drop privileges */
+    if( setgroups(1, &(gr->gr_gid)) != 0) {
+      syslog(LOG_ERR, "setgroups() failed: %s", strerror(errno));
+      if(!(close(child_pipe[1]) == 0)) {
+        syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+      }
+      exit(-1);
+    }
     if(setresgid(gr->gr_gid, gr->gr_gid, gr->gr_gid) != 0 ) {
-        syslog(LOG_ERR, "setresgid to %d failed: %s", gr->gr_gid, strerror(errno));
-        close(child_pipe[1]);
-        exit(-1);
+      syslog(LOG_ERR, "setresgid to %d failed: %s", gr->gr_gid, strerror(errno));
+      if(!(close(child_pipe[1]) == 0)) {
+        syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+      }
+      exit(-1);
     }
 
     if(setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) != 0 ) {
-        syslog(LOG_ERR, "setresuid to %d failed: %s", gr->gr_gid, strerror(errno));
-        close(child_pipe[1]);
-        exit(-1);
+      syslog(LOG_ERR, "setresuid to %d failed: %s", gr->gr_gid, strerror(errno));
+      if(!(close(child_pipe[1]) == 0)) {
+        syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+      }
+      exit(-1);
     }
 
-    syslog(LOG_ERR,"uid, gid, euid, egid: %d, %d, %d, %d\n",
+#ifdef PAM_CHOS_DEBUG
+    syslog(LOG_DEBUG,"uid, gid, euid, egid: %d, %d, %d, %d\n",
             getuid(), getgid(), geteuid(), getegid());
+#endif
 
-    ret = get_chos_info(argc, argv, child_pipe[1], pw->pw_dir);
-    close(child_pipe[1]);
 
-    if(ret != 1) {
-      syslog(LOG_ERR, "Helper code returned status %d\n",ret);
-      exit(ret);
+    /* Retrive the correct CHOS environment name and path, write
+     * it to child_pipe.  get_chos_info will also close child_pipe.
+     */
+    if( (ret = get_chos_info(argc, argv, child_pipe[1], pw->pw_dir)) != 1) {
+      syslog(LOG_ERR, "get_chos_info() returned status %d\n",ret);
+      exit(-1);
     }
     else {
       exit(0);
     }
   }
-  /* Parent process */
   else {
+    /* Parent process */
+    if(!(close(child_pipe[1]) == 0)) {
+      syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+      wait(&child_status);
+      return(ONERR);
+    }
 
-    close(child_pipe[1]);
-
-    syslog(LOG_INFO,"forked pid %d\n",child_pid);
-    syslog(LOG_ERR,"uid, gid, euid, egid: %d, %d, %d, %d\n",
+#ifdef PAM_CHOS_DEBUG
+    syslog(LOG_DEBUG,"forked pid %d\n",child_pid);
+    syslog(LOG_DEBUG,"uid, gid, euid, egid: %d, %d, %d, %d\n",
             getuid(), getgid(), geteuid(), getegid());
-
-    child_pipe_file = fdopen(child_pipe[0],"r");
-
-    if(!child_pipe_file) {
-      syslog(LOG_ERR, "fdopen() failed: %s\n",strerror(errno));
-      return(onerr);
-    }
+#endif
 
 
-    if(!(read_line_from_file(child_pipe_file, env_path))) {
-      syslog(LOG_ERR, "Failed to read path from child: %s\n",strerror(errno));
-      fclose(child_pipe_file);
-      wait(&child_status);
-      return(onerr);
-    }
-    
-    if(!(read_line_from_file(child_pipe_file, osenv))) {
-      syslog(LOG_ERR, "Failed to read environment name from child: %s\n",
-              strerror(errno));
-      fclose(child_pipe_file);
-      wait(&child_status);
-      return(onerr);
-    }
-
-    fclose(child_pipe_file);
+    /* Retrieve values for env_path and osenv from child process. */
+    ret = retrieve_from_child(env_path, osenv, child_pipe[0]);
     wait(&child_status);
+
+    if(ret != 1) {
+      syslog(LOG_ERR, "Information retrieval from child returned status: %d\n",ret);
+      return(ONERR);
+    }
 
     if(child_status != 0) {
       syslog(LOG_ERR, "Child returned status: %d\n",child_status);
-      return(onerr);
+      return(ONERR);
     }
 
-    sanitize_path(env_path, MAXLINE);
-    sanitize_name(osenv, MAXLINE);
 
-    if (usedefault==0 && set_multi(env_path)!=0){
+    /* Set the CHOS link to env_path */
+    sanitize_path(env_path, MAXLINE+1);
+    sanitize_name(osenv, MAXLINE+1);
+
+    if (set_multi(env_path) != 0){
       syslog(LOG_ERR,"Failed to set OS to requested system.\n");
-      return ret;
+      return(ONERR);
     }
 
 
-    snprintf(envvar,45,"CHOS=%.40s",osenv);
-    pam_putenv(pamh, envvar);
+    /* Set $CHOS to the environment name */
+    ret = snprintf(envvar,MAXLINE+1,"CHOS=%.40s",osenv);
+    if (ret < 1) {
+      syslog(LOG_ERR, "Could not construct CHOS environment variable definition.\n");
+      return(ONERR);
+    }
+    else if (ret > MAX_LEN+1) {
+      syslog(LOG_ERR, "Environment variable definition is too long.\n");
+      return -1;
+    }
+
+    if( (ret = pam_putenv(pamh, envvar)) != PAM_SUCCESS) {
+      syslog(LOG_ERR, "pam_putenv() failed: %s\n", pam_strerror(pamh, ret));
+    }
+
     closelog();
 
-    ret = PAM_SUCCESS;
-    return ret;
+    return(PAM_SUCCESS);
   }
 }
 
@@ -230,21 +263,4 @@ struct pam_module _pam_chos_modstruct = {
 };
 #endif
 
-
-/* This writes the target into the chos kernel module */
-int set_multi(char *os)
-{
-  FILE *stream;
-  stream=fopen(SETCHOS,"w");
-  if (stream==NULL){
-    syslog(LOG_ERR,"Unable to open multi root system\n");
-    return -3;
-  }
-  if (fprintf(stream,os)==-1){
-    syslog(LOG_ERR,"Unable to write to multi root system\n");
-    return -3;
-  }
-  fclose(stream);
-  return 0;
-}
 
