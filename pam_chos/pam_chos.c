@@ -143,7 +143,7 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     }
 
     if(setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) != 0 ) {
-      syslog(LOG_ERR, "setresuid to %d failed: %s", gr->gr_gid, strerror(errno));
+      syslog(LOG_ERR, "setresuid to %d failed: %s", pw->pw_uid, strerror(errno));
       close_fd(child_pipe[1]);
       exit(-1);
     }
