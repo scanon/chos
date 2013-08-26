@@ -97,3 +97,9 @@ int get_chos_info(int argc, const char **argv, int fd, char *user_conf_dir);
  */
 int retrieve_from_child(char *env_path, char *osenv, int fd);
 
+/*
+ * Attempt to close the file descriptor fd, and syslog a message on
+ * failure.  Returns the same values as close(2).
+ */
+int close_fd(int fd);
+

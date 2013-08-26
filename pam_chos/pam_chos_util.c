@@ -24,6 +24,7 @@
  */
 
 #include <errno.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
@@ -38,6 +39,17 @@ int sanitize_name(char *s, int length) {
 
 int sanitize_path(char *s, int length) {
   return sanitize_str(s, length, 1);
+}
+
+int close_fd(int fd) {
+  int ret;
+  ret = close(fd);
+
+  if(ret != 0) {
+    syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+  }
+
+  return ret;
 }
 
 int sanitize_str(char *s, int length, int is_path) {

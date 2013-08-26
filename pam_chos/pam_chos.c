@@ -110,20 +110,14 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     /* Fork failed */
     syslog(LOG_ERR,"fork() failed: %s\n",strerror(errno));
 
-    if(!(close(child_pipe[0]) == 0)) {
-      syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
-    }
-
-    if(!(close(child_pipe[1]) == 0)) {
-      syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
-    }
+    close_fd(child_pipe[0]);
+    close_fd(child_pipe[1]);
 
     return(ONERR);
   }
   else if (child_pid == 0) {
     /* Child process */
-    if(!(close(child_pipe[0]) == 0)) {
-      syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+    if(!(close_fd(child_pipe[0]) == 0)) {
       exit(-1);
     }
 
@@ -132,33 +126,25 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
     gr = getgrnam(user);
     if (gr==NULL) {
       syslog(LOG_ERR,"getgrnam failed for %d: %s\n",getuid(), strerror(errno));
-      if(!(close(child_pipe[1]) == 0)) {
-        syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
-      }
+      close_fd(child_pipe[1]);
       exit(-1);
     }
 
     /* Drop privileges */
     if( setgroups(1, &(gr->gr_gid)) != 0) {
       syslog(LOG_ERR, "setgroups() failed: %s", strerror(errno));
-      if(!(close(child_pipe[1]) == 0)) {
-        syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
-      }
+      close_fd(child_pipe[1]);
       exit(-1);
     }
     if(setresgid(gr->gr_gid, gr->gr_gid, gr->gr_gid) != 0 ) {
       syslog(LOG_ERR, "setresgid to %d failed: %s", gr->gr_gid, strerror(errno));
-      if(!(close(child_pipe[1]) == 0)) {
-        syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
-      }
+      close_fd(child_pipe[1]);
       exit(-1);
     }
 
     if(setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) != 0 ) {
       syslog(LOG_ERR, "setresuid to %d failed: %s", gr->gr_gid, strerror(errno));
-      if(!(close(child_pipe[1]) == 0)) {
-        syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
-      }
+      close_fd(child_pipe[1]);
       exit(-1);
     }
 
@@ -181,8 +167,7 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
   }
   else {
     /* Parent process */
-    if(!(close(child_pipe[1]) == 0)) {
-      syslog(LOG_ERR,"close() failed: %s\n",strerror(errno));
+    if(!(close_fd(child_pipe[1]) == 0)) {
       wait(&child_status);
       return(ONERR);
     }
