@@ -71,7 +71,6 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
   int child_pipe[2];
   int ret = PAM_SESSION_ERR;
 
-  struct group const *gr;
   struct passwd const *pw;
 
   openlog(PAM_CHOS_MODULE_NAME, LOG_PID, LOG_AUTHPRIV);
@@ -121,23 +120,15 @@ PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags,
       exit(-1);
     }
 
-    /* Retrieve the group structure for this user. */
-    errno = 0;
-    gr = getgrnam(user);
-    if (gr==NULL) {
-      syslog(LOG_ERR,"getgrnam failed for %d: %s\n",getuid(), strerror(errno));
-      close_fd(child_pipe[1]);
-      exit(-1);
-    }
 
     /* Drop privileges */
-    if( setgroups(1, &(gr->gr_gid)) != 0) {
+    if( setgroups(1, &(pw->pw_gid)) != 0) {
       syslog(LOG_ERR, "setgroups() failed: %s", strerror(errno));
       close_fd(child_pipe[1]);
       exit(-1);
     }
-    if(setresgid(gr->gr_gid, gr->gr_gid, gr->gr_gid) != 0 ) {
-      syslog(LOG_ERR, "setresgid to %d failed: %s", gr->gr_gid, strerror(errno));
+    if(setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) != 0 ) {
+      syslog(LOG_ERR, "setresgid to %d failed: %s", pw->pw_gid, strerror(errno));
       close_fd(child_pipe[1]);
       exit(-1);
     }
