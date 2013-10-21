@@ -1,5 +1,5 @@
 %define module chos
-%define version 0.12.0rc1
+%define version 0.12.1rc1
 %define release 1
 
 #
@@ -204,6 +204,9 @@ exit 0
 %endif %{usedkms}
 
 %changelog
+* Mon Oct 21 2013 Larry Pezzaglia <lmpezzaglia@lbl.gov>
+- Update to version 0.12.1rc1
+
 * Tue May 24 2005 Shane Canon <canon@nersc.gov>
 - Added pam_job_starter
 - Modified pam_chos to check CHOS env. variable
