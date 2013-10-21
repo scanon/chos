@@ -6,7 +6,7 @@
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
-#define MY_MODULE_VERSION "0.12.0"
+#define MY_MODULE_VERSION "0.12.1"
 
 /*
  * chos, Linux Kernel Module.
@@ -58,6 +58,8 @@
  *               returns to handle some scenarios where child
  *               processes quickly fork new children and then exit
  *  0.12.0 - Improve several log messages
+ *  0.12.1 - Improve handling of short-lived processes in
+ *           chos_do_fork()
  *
  */
 
@@ -225,11 +227,14 @@ void reset_link(struct chos_proc *p)
 void set_link(struct chos_link *link, struct task_struct *t)
 {
   struct chos_proc *p;
+  pid_t global_pid;
+
+  BUG_ON(t == NULL);
 
 #ifdef TASK_PID_NR
-  pid_t global_pid = task_pid_nr(t);
+  global_pid = task_pid_nr(t);
 #else
-  pid_t global_pid = t->pid;
+  global_pid = t->pid;
 #endif
 
   BUG_ON(global_pid > ch->pid_max);
@@ -990,7 +995,9 @@ DO_FORK_RET chos_do_fork(unsigned long clone_flags,
     t=find_task_by_pid(pid);
 #endif
     write_unlock_irq(tasklist_lock_p);
-    set_link(parent_link,t);
+    if(t != NULL ) {
+        set_link(parent_link,t);
+    }
   }
   else{
     lookup_link(current);
