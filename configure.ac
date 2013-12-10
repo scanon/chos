@@ -38,8 +38,16 @@ AC_PROG_CC
 AC_HEADER_STDC
 
 AC_PROG_LIBTOOL
-AC_CHECK_PROGS(YACC,"yacc",[${am_missing_run} yacc])
-AC_CHECK_PROGS(LEX,"lex",[${am_missing_run} lex])
+
+AC_CHECK_PROG(LEX,[lex],[${am_missing_run} lex],[no])
+AM_CONDITIONAL([LEX_PRESENT], [test "x$LEX" != xno])
+AM_COND_IF([LEX_PRESENT],,[AC_MSG_ERROR(['lex' not found.])])
+
+AC_CHECK_PROG(YACC,[yacc],[${am_missing_run} yacc],[no])
+AM_CONDITIONAL([YACC_PRESENT], [test "x$YACC" != xno])
+AM_COND_IF([YACC_PRESENT],,[AC_MSG_ERROR(['yacc' not found.])])
+
+
 AC_SUBST(LEX_OUTPUT_ROOT, lex.yy)
 
 GCC_WARNINGS="-Wall -Wwrite-strings -Werror \
