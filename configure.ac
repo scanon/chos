@@ -77,43 +77,6 @@ AC_SUBST(CC_STATIC)
 
 dnl Check for libraries
 
-dnl Optional stuff
-#****************************************************************************/
-# Kernel Source Check
-#****************************************************************************/
-AC_MSG_CHECKING([kernel source])
-AC_ARG_WITH(
-    [kheaders],
-[  --with-kernel-source[=PATH]  directory where kernel source exists],
-    [KERNEL_BASE=$withval],
-    [KERNEL_BASE=/lib/modules/`uname -r`/build])
-KERNEL_HDR="$KERNEL_BASE/include"
-if test ! -f "$KERNEL_HDR/linux/utsrelease.h"
-then
-    AC_MSG_RESULT([not found])
-    AC_MSG_ERROR([cannot find the kernel headers in $KERNEL_HDR. Use --with-kernel-source])
-else
-    AC_MSG_RESULT([found in $KERNEL_HDR])
-fi
-KERNEL_VERSION=`$CC -E -dM -I$KERNEL_HDR $KERNEL_HDR/linux/utsrelease.h|$AWK '/UTS_RELEASE/ { print $3 }' \
-       | sed 's/"//g'`
-AC_MSG_RESULT(kernel version: $KERNEL_VERSION)
-AC_SUBST(KERNEL_BASE)
-AC_SUBST(KERNEL_HDR)
-AC_SUBST(KERNEL_VERSION)
-
-
-#****************************************************************************/
-# Module directory
-#****************************************************************************/
-AC_MSG_CHECKING([module directory])
-AC_ARG_WITH(
-    [moduledir],
-    [  --with-moduledir=DIR specify where to install the kernel module],
-    [MODULES_DIR=$withval],
-    [MODULES_DIR=/lib/modules/$KERNEL_VERSION/kernel/misc])
-AC_MSG_RESULT([$MODULES_DIR])
-AC_SUBST(MODULES_DIR)
 
 #****************************************************************************/
 # Build kernel module
@@ -128,6 +91,46 @@ AC_ARG_ENABLE(kernel,
 AC_SUBST(BUILD_KERNEL)
 
 kernel_module_enabled=$(test $BUILD_KERNEL -gt 0 && echo yes || echo no)
+
+
+if test "x$kernel_module_enabled" = "xyes"; then
+    #****************************************************************************/
+    # Kernel Source Check
+    #****************************************************************************/
+    AC_MSG_CHECKING([kernel source])
+    AC_ARG_WITH(
+        [kheaders],
+    [  --with-kernel-source[=PATH]  directory where kernel source exists],
+        [KERNEL_BASE=$withval],
+        [KERNEL_BASE=/lib/modules/`uname -r`/build])
+    KERNEL_HDR="$KERNEL_BASE/include"
+    if test ! -f "$KERNEL_HDR/linux/utsrelease.h"
+    then
+        AC_MSG_RESULT([not found])
+        AC_MSG_ERROR([cannot find the kernel headers in $KERNEL_HDR. Use --with-kernel-source])
+    else
+        AC_MSG_RESULT([found in $KERNEL_HDR])
+    fi
+    KERNEL_VERSION=`$CC -E -dM -I$KERNEL_HDR $KERNEL_HDR/linux/utsrelease.h|$AWK '/UTS_RELEASE/ { print $3 }' \
+           | sed 's/"//g'`
+    AC_MSG_RESULT(kernel version: $KERNEL_VERSION)
+    AC_SUBST(KERNEL_BASE)
+    AC_SUBST(KERNEL_HDR)
+    AC_SUBST(KERNEL_VERSION)
+
+
+    #****************************************************************************/
+    # Module directory
+    #****************************************************************************/
+    AC_MSG_CHECKING([module directory])
+    AC_ARG_WITH(
+        [moduledir],
+        [  --with-moduledir=DIR specify where to install the kernel module],
+        [MODULES_DIR=$withval],
+        [MODULES_DIR=/lib/modules/$KERNEL_VERSION/kernel/misc])
+    AC_MSG_RESULT([$MODULES_DIR])
+    AC_SUBST(MODULES_DIR)
+fi
 
 dnl packaging convenience
 AC_ARG_ENABLE(fakeroot,
