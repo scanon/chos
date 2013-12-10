@@ -32,9 +32,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdarg.h>
 
-#include "chos.h"
 #include "../config.h"
+#include "chos.h"
 
 
 #define MAXLINE 80
@@ -231,4 +232,24 @@ int chos_parse_args(int argc, char **argv) {
   }
 
   return 1;
+}
+
+/* TODO */
+char **set_env(void) {
+    return NULL;
+}
+
+/* TODO */
+char *check_chos(char *name) {
+    return NULL;
+}
+
+/* TODO */
+int chos_append_env(char *name, char *path, char *valid) {
+    return 0;
+}
+
+/* TODO */
+int chos_append_env_var(char *name) {
+    return 0;
 }

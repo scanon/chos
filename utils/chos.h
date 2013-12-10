@@ -45,8 +45,22 @@ typedef struct chos_config {
     char **env_vars;
 } chos_config;
 
+/*
+ * This function looks at the /etc/chos.conf file and sets variables
+ * listed in the %ENV section based on the environment of the calling
+ * shell.
+ */
 char **set_env(void);
+
+/*
+ * Returns the path to the CHOS environment specified by *name, or
+ * NULL if no such valid environment exists.
+ */
 char *check_chos(char *name);
+
+int chos_append_env(char *name, char *path, char *valid);
+int chos_append_env_var(char *name);
+
 int argmatch(const char *arg, const char *match);
 int chos_parse_args(int argc, char **argv);
 

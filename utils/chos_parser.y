@@ -1,6 +1,7 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include "chos.h"
 #define YYSTYPE char *
  
 int line=1;
