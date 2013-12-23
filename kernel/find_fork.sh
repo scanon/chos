@@ -80,6 +80,7 @@ if  [ -e $SM ] ; then
   FIND_PID=`grep ' find_task_by_pid_ns$' $SM | awk '{print $1}'`
   TASKLIST_LOCK=`grep ' tasklist_lock$' $SM | awk '{print $1}'`
   SET_FS_ROOT=`grep ' set_fs_root$' $SM | awk '{print $1}'`
+  PATH_LOOKUPAT=`grep ' path_lookupat$' $SM | awk '{print $1}'`
   echo "#ifdef PID_NS" >>$INC;
   echo "struct task_struct* (*s_find_task_by_pid_ns)(pid_t nr, struct pid_namespace *ns)=(void *)0x$FIND_PID;" >>$INC;
   echo "#endif" >>$INC;
@@ -88,6 +89,15 @@ if  [ -e $SM ] ; then
   echo "void* (*set_fs_root_p)(struct fs_struct *, struct path *)=(void *)0x$SET_FS_ROOT;" >>$INC;
   echo "#else" >>$INC;
   echo "void* (*set_fs_root_p)(struct fs_struct *, struct vfsmount *, struct dentry *)=(void *)0x$SET_FS_ROOT;" >>$INC;
+  echo "#endif" >>$INC;
+  echo "#ifndef HAS_PATH_LOOKUP" >>$INC;
+  echo "int (*path_lookupat_p)(int, const char *, unsigned int, struct nameidata *)=(void *)0x$PATH_LOOKUPAT;" >>$INC;
+  echo "#endif" >>$INC;
+
+  
+  echo "#ifndef HAS_PROC_DIR_ENTRY_DEF" >> $INC;
+  PROC_INTERNAL_H=./proc_internal.h
+  sed -e 's/proc_dir_entry/proc_dir_entry_t/' -ne '/^struct proc_dir_entry/,/};/p' $PROC_INTERNAL_H >> $INC
   echo "#endif" >>$INC;
 
 fi

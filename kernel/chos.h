@@ -27,6 +27,9 @@
  *
  */
 
+#ifndef _LINUX_CHOS_H
+#define _LINUX_CHOS_H
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,99)
 #define MOD_INC   /* nop */
 #define MOD_DEC   /* nop */
@@ -45,6 +48,24 @@
 #define PARENT p_opptr
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
+#define KUID_T_IS_STRUCT
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0)
+#define HAS_PATH_LOOKUP
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
+#define HAS_PROC_CREATE
+#else
+/*
+ * proc_dir_entry was made an "internal" structure in 3.10.
+ * However, we need access to proc_dir_entry->proc_iops in order to
+ * set the inode operations for the CHOS link
+ */
+#define HAS_PROC_DIR_ENTRY_DEF
+#endif
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,18)
 #define TIDPTR_T int __user
@@ -122,4 +143,4 @@ struct valid_path {
 
 LIST_HEAD(valid_paths);
 
-
+#endif  /* _LINUX_CHOS_H */

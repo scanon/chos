@@ -5,8 +5,8 @@ m4_define(PROJECT_NAME,  [CHOS])
 m4_define(PROJECT_EMAIL, [chos@nersc.gov])
 m4_define(PROJECT_TAR,   [chos])
 m4_define(PROJECT_MAJOR, 0)
-m4_define(PROJECT_MINOR, 12)
-m4_define(PROJECT_MICRO, 1)
+m4_define(PROJECT_MINOR, 13)
+m4_define(PROJECT_MICRO, 0rc1)
 
 AC_INIT(PROJECT_NAME, PROJECT_MAJOR.PROJECT_MINOR.PROJECT_MICRO,
         PROJECT_EMAIL, PROJECT_TAR)
@@ -85,14 +85,20 @@ AC_ARG_WITH(
     [KERNEL_BASE=$withval],
     [KERNEL_BASE=/lib/modules/`uname -r`/build])
 KERNEL_HDR="$KERNEL_BASE/include"
-if test ! -f "$KERNEL_HDR/linux/utsrelease.h"
+if test -f "$KERNEL_HDR/linux/utsrelease.h"
 then
+    KERNEL_VERSION_H="$KERNEL_HDR/linux/utsrelease.h"
+elif test -f "$KERNEL_HDR/generated/utsrelease.h"
+then
+    KERNEL_VERSION_H="$KERNEL_HDR/generated/utsrelease.h"
+else
     AC_MSG_RESULT([not found])
     AC_MSG_ERROR([cannot find the kernel headers in $KERNEL_HDR. Use --with-kernel-source])
-else
-    AC_MSG_RESULT([found in $KERNEL_HDR])
 fi
-KERNEL_VERSION=`$CC -E -dM -I$KERNEL_HDR $KERNEL_HDR/linux/utsrelease.h|$AWK '/UTS_RELEASE/ { print $3 }' \
+
+AC_MSG_RESULT([found in $KERNEL_HDR ($KERNEL_VERSION_H)])
+
+KERNEL_VERSION=`$CC -E -dM -I$KERNEL_HDR $KERNEL_VERSION_H|$AWK '/UTS_RELEASE/ { print $3 }' \
        | sed 's/"//g'`
 AC_MSG_RESULT(kernel version: $KERNEL_VERSION)
 AC_SUBST(KERNEL_BASE)
@@ -137,7 +143,7 @@ AC_SUBST(FAKEROOT)
 AC_CHECK_LIB([pam], [pam_authenticate], PAM_LIBS="-lpam",
              AC_MSG_FAILURE([Couldn't find -lpam]))
 
-AC_CHECK_LIB([pam_misc], [pam_getenv], PAM_MISC_LIBS="-lpam_misc",
+AC_CHECK_LIB([pam_misc], [pam_misc_setenv], PAM_MISC_LIBS="-lpam_misc",
              AC_MSG_FAILURE([Couldn't find -lpam_misc]))
 
 AC_SUBST(PAM_LIBS)

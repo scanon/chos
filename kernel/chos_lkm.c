@@ -6,7 +6,7 @@
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
-#define MY_MODULE_VERSION "0.12.1"
+#define MY_MODULE_VERSION "0.13.0"
 
 /*
  * chos, Linux Kernel Module.
@@ -60,6 +60,7 @@
  *  0.12.0 - Improve several log messages
  *  0.12.1 - Improve handling of short-lived processes in
  *           chos_do_fork()
+ *  0.13.0 - Add support for el7 kernel family
  *
  */
 
@@ -67,11 +68,12 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/version.h>
-#include <linux/proc_fs.h> /* contains all procfs methods signature */
 #include <linux/err.h>
 #include <linux/list.h>
+#include <linux/proc_fs.h> /* contains all procfs methods signature */
 #include <linux/vmalloc.h>
 #include <asm/unistd.h>
 #include <asm/uaccess.h>
@@ -88,6 +90,7 @@
 
 #include "chos.h"
 #include "address.h"
+
 
 #ifdef PID_NS
 #include <linux/nsproxy.h>
@@ -392,7 +395,6 @@ int my_chroot(const char *path)
  * This is called when something is written to /proc/chos/setchos.  It sets the
  * link for the calling process.
  */
-
 int write_setchos(struct file* file, const char* buffer, unsigned long count, void* data)
 {
   struct chos_link *link;
@@ -430,7 +432,10 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
  
 
   if (!is_valid_path(text)){
-#ifdef USE_CRED
+#if defined(USE_CRED) && defined(KUID_T_IS_STRUCT)
+    printk("%s:Attempt to use invalid path. uid=%d (Requested %s)\n",
+            MODULE_NAME,current->cred->uid.val,text);
+#elif defined(USE_CRED)
     printk("%s:Attempt to use invalid path. uid=%d (Requested %s)\n",MODULE_NAME,current->cred->uid,text);
 #else
     printk("%s: Attempt to use invalid path. uid=%d (Requested %s)\n",MODULE_NAME,current->uid,text);
@@ -551,7 +556,9 @@ int write_valid(struct file* file, const char* buffer, unsigned long count, void
   int i;
   int retval;
 
-#ifdef USE_CRED
+#if defined(USE_CRED) && defined(KUID_T_IS_STRUCT)
+  if (current->cred->euid.val!=0){
+#elif defined(USE_CRED)
   if (current->cred->euid!=0){
 #else
   if (current->euid!=0){
@@ -662,6 +669,32 @@ static struct inode_operations link_inode_operations = {
         .follow_link=    link_follow_link,
 };
 
+/* Operations for /proc/chos/setchos */
+static struct file_operations setchos_fops = {
+        .write = write_setchos
+};
+
+/* Operations for /proc/chos/resetchos */
+static struct file_operations resetchos_fops = {
+        .write = write_resetchos
+};
+
+/* Operations for /proc/chos/savestate */
+static struct file_operations savestate_fops = {
+        .write = write_savestate
+};
+
+/* Operations for /proc/chos/version */
+static struct file_operations version_fops = {
+        .read = read_version
+};
+
+/* Operations for /proc/chos/valid */
+static struct file_operations valid_fops = {
+        .read = read_valid,
+        .write = write_valid
+};
+
 
 /*
  * chos init:
@@ -684,9 +717,9 @@ int init_chos(void)
     return -1;
   }
 
-#ifdef HAS_LOOKUP_NOALT
+#if defined(HAS_LOOKUP_NOALT) && defined(HAS_PATH_LOOKUP)
   retval=path_lookup(CHOSROOT, LOOKUP_FOLLOW | LOOKUP_DIRECTORY | LOOKUP_NOALT,&(ch->named)); 
-#else
+#elif defined(HAS_PATH_LOOKUP)
   /*
    * TODO: Find out *why* was LOOKUP_NOALT was removed in
    * 7f2da1e7d0330395e5e9e350b879b98a1ea495df and what the
@@ -694,6 +727,9 @@ int init_chos(void)
    */
   retval=path_lookup(CHOSROOT, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,&(ch->named)); 
   retval=path_lookup("/", LOOKUP_FOLLOW | LOOKUP_DIRECTORY,&(ch->nochroot)); 
+#else
+  retval=path_lookupat_p(AT_FDCWD,CHOSROOT, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,&(ch->named)); 
+  retval=path_lookupat_p(AT_FDCWD,"/", LOOKUP_FOLLOW | LOOKUP_DIRECTORY,&(ch->nochroot)); 
 #endif
   
   if (max>0)
@@ -754,6 +790,44 @@ int recover_chos(long table)
 }
 
 /*
+ * function: handle_proc_entry_failure
+ *
+ * Attempt to recover from a failure to create a proc_dir_entry.
+ */
+static void handle_proc_entry_failure(void) {
+    /* This is incomplete at this time */
+    printk("%s: <1>ERROR creating setchos\n",MODULE_NAME);
+    remove_proc_entry(MODULE_NAME,NULL);
+}
+
+/*
+ * function: chos_make_proc_entry
+ * Create a proc entry with the passed name, mode, parent directory,
+ * and operations
+ */
+static void chos_make_proc_entry(char *name, umode_t mode,
+        struct proc_dir_entry *parent, struct file_operations *fops) {
+
+    struct proc_dir_entry *f;
+#ifdef HAS_PROC_CREATE
+    f = proc_create(name, mode, parent, fops);
+#else
+    f = create_proc_entry(name, mode, parent);
+#endif
+
+  if (f == NULL ) {
+      handle_proc_entry_failure();
+  }
+#ifndef HAS_PROC_CREATE
+  else {
+    f->proc_fops = fops;
+  }
+#endif
+
+}
+
+
+/*
  * function: init_module
  *
  * The main setup function.
@@ -765,12 +839,7 @@ int recover_chos(long table)
 int init_module(void)
 {
   struct proc_dir_entry *dir;
-  struct proc_dir_entry *setchosfile;
-  struct proc_dir_entry *resetchosfile;
   struct proc_dir_entry *linkfile;
-  struct proc_dir_entry *versfile;
-  struct proc_dir_entry *savestatefile;
-  struct proc_dir_entry *validfile;
 
   if (table!=0){
     printk("%s: Recoverying table from 0x%lx\n",MODULE_NAME, table);
@@ -800,46 +869,35 @@ int init_module(void)
   ch->dir = dir;
 
   /* This is the file used to set the value (target) of the link. */
-  setchosfile = create_proc_entry("setchos", 0666, dir);
-  if (setchosfile == NULL) goto fail_entry;
-  setchosfile->write_proc = write_setchos;
+  chos_make_proc_entry("setchos", 0666, dir, &setchos_fops);
 
   /* This is the file that is used to reset the link. */
-  resetchosfile = create_proc_entry("resetchos", 0666, dir);
-  if (resetchosfile == NULL) goto fail_entry;
-  resetchosfile->write_proc = write_resetchos;
+  chos_make_proc_entry("resetchos", 0666, dir, &resetchos_fops);
 
   /* This enables the save state flag. */
-  savestatefile = create_proc_entry("savestate", 0600, dir);
-  if (savestatefile == NULL) goto fail_entry;
-  savestatefile->write_proc = write_savestate;
+  chos_make_proc_entry("savestate", 0600, dir, &savestate_fops);
 
   /* This is used to read the version. */
-  versfile = create_proc_entry("version", 0444, dir);
-  if (versfile == NULL) goto fail_entry;
-  versfile->read_proc = read_version;
+  chos_make_proc_entry("version", 0444, dir, &version_fops);
 
   /* This is used to read the version. */
-  validfile = create_proc_entry("valid", 0600, dir);
-  if (validfile == NULL) goto fail_entry;
-  validfile->read_proc = read_valid;
-  validfile->write_proc = write_valid;
+  chos_make_proc_entry("valid", 0600, dir, &valid_fops);
 
-  /* This is the all important specia link. */
+  /* This is the all important special link. */
   linkfile = proc_symlink("link", dir, "/");
-  if (linkfile == NULL) goto fail_entry;
+  if (linkfile == NULL) handle_proc_entry_failure();
 
-  /* Set the operations struct to our custom version */
+  /* Set the inode operations struct to our custom version. */
+#ifdef HAS_PROC_DIR_ENTRY_DEF
   linkfile->proc_iops=&link_inode_operations;
+#else
+  ((struct proc_dir_entry_t *)linkfile)->proc_iops=&link_inode_operations;
+#endif
 
   /* Report success */
   printk ("%s %s module initialized..\n",MODULE_NAME,MY_MODULE_VERSION);
   return 0;
 
-  /* This is incomplete at this time */
-fail_entry:
-  printk("%s: <1>ERROR creating setchos\n",MODULE_NAME);
-  remove_proc_entry(MODULE_NAME,NULL);
 fail_dir:
   printk("%s: <1>ERROR creating chos directory\n",MODULE_NAME);
   return -1;
