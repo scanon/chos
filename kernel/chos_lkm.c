@@ -68,6 +68,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/version.h>
@@ -395,20 +396,19 @@ int my_chroot(const char *path)
  * This is called when something is written to /proc/chos/setchos.  It sets the
  * link for the calling process.
  */
-int write_setchos(struct file* file, const char* buffer, unsigned long count, void* data)
-{
+ssize_t write_setchos(struct file *filp, const char *buf, size_t count, loff_t *offp) {
   struct chos_link *link;
   char *text;
   int i=0;
   int retval;
 
   i=0;
-  while (i<(count) && buffer[i]!='\n' && buffer[i]!=0){
+  while (i<(count) && buf[i]!='\n' && buf[i]!=0){
      i++;
   }
   text=(char *)kmalloc(i,GFP_KERNEL);
   if (text){
-     retval = __copy_from_user(text, buffer, i);
+     retval = __copy_from_user(text, buf, i);
      if(retval > 0) {
          printk("%s: __copy_from_user returned %d\n.",MODULE_NAME, retval);
      }
@@ -460,8 +460,7 @@ int write_setchos(struct file* file, const char* buffer, unsigned long count, vo
  * This is called when something is written to /proc/chos/resetchos.  It resets the link
  * for the calling process.
  */
-int write_resetchos(struct file* file, const char* buffer, unsigned long count, void* data)
-{
+ssize_t write_resetchos(struct file *filp, const char *buf, size_t count, loff_t *offp) {
   MOD_INC;
   BUG_ON(current->pid > ch->pid_max);
 
@@ -475,10 +474,9 @@ int write_resetchos(struct file* file, const char* buffer, unsigned long count, 
  * This is called when something is written to /proc/chos/savestate.  It changes the save
  * state flag.  This is only used for a module upgrade.
  */
-int write_savestate(struct file* file, const char* buffer, unsigned long count, void* data)
-{
+ssize_t write_savestate(struct file *filp, const char *buf, size_t count, loff_t *offp) {
   if (count>1){
-    if (buffer[0]=='1'){
+    if (buf[0]=='1'){
       printk("%s: save state enabled\n",MODULE_NAME);
       printk("%s: save state address = 0x%lx\n",MODULE_NAME,(long)ch);
       save_state=1;
@@ -491,11 +489,13 @@ int write_savestate(struct file* file, const char* buffer, unsigned long count, 
   return count;
 }
 
-/* Thie is called when /proc/chos/version is read.  It returns the version of chos.
+
+/*
+ * This is called when /proc/chos/version is opened.  It returns the
+ * version of the CHOS kernel module.
  */
-int read_version(char* page, char** start, off_t off, int count, int* eof, void* data)
+static int print_version(struct seq_file *m, void *v)
 {
-  int len;
   char *yes_fork="Fork trapped";
   char *no_fork="Fork not trapped";
   char *text_fork;
@@ -507,11 +507,15 @@ int read_version(char* page, char** start, off_t off, int count, int* eof, void*
   else{
     text_fork=no_fork;
   }
-  len = sprintf(page, "%s %s %s\n",MODULE_NAME,MY_MODULE_VERSION,text_fork);
-  *eof = 1;
+  seq_printf(m,"%s %s %s\n",MODULE_NAME,MY_MODULE_VERSION,text_fork);
   MOD_DEC;
-  return len; /* return number of bytes returned */
+  return 0; /* return number of bytes returned */
 }
+
+static int version_open(struct inode *inode, struct file *file) {
+  return single_open(file, print_version, NULL);
+}
+
 
 void add_valid_path(char *path,int len)
 {
@@ -550,11 +554,12 @@ void resetvalid(void)
   }
 }
 
-int write_valid(struct file* file, const char* buffer, unsigned long count, void* data)
-{
+ssize_t write_valid(struct file *filp, const char *buf, size_t count, loff_t *offp) {
   char *path;
   int i;
   int retval;
+
+  MOD_INC;
 
 #if defined(USE_CRED) && defined(KUID_T_IS_STRUCT)
   if (current->cred->euid.val!=0){
@@ -565,18 +570,18 @@ int write_valid(struct file* file, const char* buffer, unsigned long count, void
 #endif
     return -EPERM;
   }
-  if (buffer[0]=='-'){
+  if (buf[0]=='-'){
     printk("%s: Resetting\n",MODULE_NAME);
     resetvalid();
   }
   else{
    i=0;
-   while (i<(count) && buffer[i]!='\n' && buffer[i]!=0)
+   while (i<(count) && buf[i]!='\n' && buf[i]!=0)
      i++;
    path=(char *)kmalloc(i,GFP_KERNEL);
    if (path){
      path[i]=0;
-     retval = __copy_from_user(path, buffer, i);
+     retval = __copy_from_user(path, buf, i);
      if(retval > 0) {
          printk("%s: __copy_from_user returned %d\n.",MODULE_NAME,retval);
      }
@@ -586,28 +591,25 @@ int write_valid(struct file* file, const char* buffer, unsigned long count, void
      return 0;
    }
   }
+  MOD_DEC;
   return count;
 }
 
-int read_valid(char* page, char** start, off_t off, int count, int* eof, void* data)
-{
-  int len=0;
-  int len2=0;
+/* Print a list of valid CHOS paths. */
+static int print_valid(struct seq_file *m, void *v) {
   struct valid_path *c;
   struct list_head *p;
-  char *ptr=page;
 
   for (p=valid_paths.next;p!=&valid_paths;){
     c=list_entry(p,struct valid_path,list);
-    if (len<count){
-      len2=sprintf(ptr,"%s\n",c->path);
-      ptr+=len2;
-      len+=len2;
-    }
+    seq_printf(m, "%s\n", c->path);
     p=p->next;
   }
-  *eof=1;
-  return len;
+  return 0;
+}
+
+static int valid_open(struct inode *inode, struct file *file) {
+  return single_open(file, print_valid, NULL);
 }
 
 int is_valid_path(const char *path)
@@ -686,13 +688,19 @@ static struct file_operations savestate_fops = {
 
 /* Operations for /proc/chos/version */
 static struct file_operations version_fops = {
-        .read = read_version
+        .open       = version_open,
+        .read       = seq_read,
+        .llseek     = seq_lseek,
+        .release    = single_release
 };
 
 /* Operations for /proc/chos/valid */
 static struct file_operations valid_fops = {
-        .read = read_valid,
-        .write = write_valid
+        .write      = write_valid,
+        .open       = valid_open,
+        .read       = seq_read,
+        .llseek     = seq_lseek,
+        .release    = single_release
 };
 
 
@@ -891,7 +899,15 @@ int init_module(void)
 #ifdef HAS_PROC_DIR_ENTRY_DEF
   linkfile->proc_iops=&link_inode_operations;
 #else
-  ((struct proc_dir_entry_t *)linkfile)->proc_iops=&link_inode_operations;
+  /* Set the linkfile's proc_iops to link_inode_operations without
+   * using the definition of proc_dir_entry:
+   * 1) Begin with the address of proc_iops within the linkfile
+   *    structure (at position +0x20)
+   * 2) Cast this address as an inode_operations **
+   * 3) Change the value located at this address to
+   *    the address of link_inode_operations.
+   */
+  *( (const struct inode_operations **) (((unsigned long)linkfile)+0x20) ) = &link_inode_operations;
 #endif
 
   /* Report success */
