@@ -1,8 +1,14 @@
 #!/bin/sh
 
+set -Eeu
+
 KVER=${1}
 
-DIR=${2}
+if [ $# -eq 2 ]; then
+  DIR=${2}
+else
+  DIR=""
+fi
 
 SM="/$DIR/boot/System.map-$KVER"
 KB="/boot/vmlinux-$KVER"
