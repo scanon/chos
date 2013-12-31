@@ -166,12 +166,14 @@ DO_FORK_RET chos_do_fork(unsigned long clone_flags,
             unsigned long stack_size,
             TIDPTR_T *parent_tidptr,
             TIDPTR_T *child_tidptr);
-DO_FORK_RET jumper(unsigned long clone_flags,
+DO_FORK_RET jumper_func(unsigned long clone_flags,
             unsigned long stack_start,
             struct pt_regs *regs,
             unsigned long stack_size,
             TIDPTR_T *parent_tidptr,
             TIDPTR_T *child_tidptr);
+
+char jumper[PAGE_SIZE];
 
 /*
  * This allocates and fills the chos_link structure.  This is typically
@@ -977,12 +979,15 @@ int init_do_fork(void)
 #ifdef LENGTH
   for (i=0;i<LENGTH;i++,ptr++){
     if (*ptr!=opcode[i]){
-      printk("MODULE_NAME: Detected code mismatch when attempting to trap do_fork: %x %x\n",*ptr,opcode[i]);
-      return -1;
+      printk(
+        "%s: Code mismatch when attempting to trap do_fork: %x (expected %x)\n",
+        MODULE_NAME, *ptr, opcode[i]);
+        return -1;
     }
   }
 #endif
 
+  memcpy(jumper, jumper_func, PAGE_SIZE);
   ptr=(unsigned char *)START_ADD;
 
   /* Copy instructions to jumper */
@@ -991,6 +996,8 @@ int init_do_fork(void)
   for (ptr=start;ptr<end;ptr++,newptr++){
     *newptr=*ptr;
   }
+
+  set_memory_x((long unsigned)newptr, PAGE_SIZE);
 
   /* Modify jumper to jump back to original function at
      next instruction boundary */
@@ -1059,8 +1066,19 @@ DO_FORK_RET chos_do_fork(unsigned long clone_flags,
 
   parent_link = lookup_link(current);
 
-  pid=jumper(clone_flags, stack_start, regs, stack_size, 
-		parent_tidptr, child_tidptr); 
+  /*
+   * Cast jumper to the appropriate function pointer, and then call
+   * jumper with the arguments passed to chos_do_fork.
+   */
+  pid=(
+          (DO_FORK_RET (*)(unsigned long,
+                           unsigned long,
+                           struct pt_regs *,
+                           unsigned long, TIDPTR_T *,
+                           TIDPTR_T *))
+          jumper)(clone_flags, stack_start, regs,
+              stack_size, parent_tidptr, child_tidptr); 
+
   if ( pid > 0){
     write_lock_irq(tasklist_lock_p);
 #ifdef PID_NS
@@ -1081,7 +1099,7 @@ DO_FORK_RET chos_do_fork(unsigned long clone_flags,
 }
 
 
-DO_FORK_RET jumper(unsigned long clone_flags,
+DO_FORK_RET jumper_func(unsigned long clone_flags,
             unsigned long stack_start,
             struct pt_regs *regs,
             unsigned long stack_size,
