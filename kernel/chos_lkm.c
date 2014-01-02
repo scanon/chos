@@ -997,7 +997,10 @@ int init_do_fork(void)
     *newptr=*ptr;
   }
 
+#ifdef HAS_SET_MEMORY_X
+  /* Mark the memory associated with our jumper as executable. */
   set_memory_x((long unsigned)newptr, PAGE_SIZE);
+#endif
 
   /* Modify jumper to jump back to original function at
      next instruction boundary */

@@ -67,6 +67,11 @@
 #define HAS_PROC_DIR_ENTRY_DEF
 #endif
 
+/* set_memory_x() was added in 2.6.25 */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,25)
+#define HAS_SET_MEMORY_X
+#endif
+
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,18)
 #define TIDPTR_T int __user
 #define PID_T int
