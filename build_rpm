@@ -13,7 +13,7 @@ done | tr '\n' '.' | sed 's/\.$//')
 
 # Variables
 #
-TMPDIR=/tmp/$$
+TMPDIR=$(mktemp -d /tmp/chos_rpmbuild.XXXXXXXXXX)
 SDIR=$TMPDIR/chos-${VERSION}
 TARFILE=chos-${VERSION}.tgz
 
