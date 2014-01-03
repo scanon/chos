@@ -137,6 +137,7 @@ int save_state=0;
 
 #if defined(START_ADD) && defined(END_ADD)
 #define WRAP_DOFORK
+#define LENGTH (END_ADD-START_ADD)
 int init_do_fork(void);
 void cleanup_do_fork(void);
 #endif
@@ -148,6 +149,7 @@ void cleanup_do_fork(void);
 #ifdef WRAP_DOFORK
 int init_do_fork(void);
 void cleanup_do_fork(void);
+unsigned long jumper[PAGE_ALIGN(LENGTH)] __attribute__((aligned(PAGE_SIZE)));
 #endif
 
 #ifdef SCT
@@ -173,7 +175,6 @@ DO_FORK_RET jumper_func(unsigned long clone_flags,
             TIDPTR_T *parent_tidptr,
             TIDPTR_T *child_tidptr);
 
-char jumper[PAGE_SIZE];
 
 /*
  * This allocates and fills the chos_link structure.  This is typically
@@ -408,7 +409,7 @@ ssize_t write_setchos(struct file *filp, const char *buf, size_t count, loff_t *
   while (i<(count) && buf[i]!='\n' && buf[i]!=0){
      i++;
   }
-  text=(char *)kmalloc(i,GFP_KERNEL);
+  text=(char *)kmalloc(i + 1, GFP_KERNEL);
   if (text){
      retval = __copy_from_user(text, buf, i);
      if(retval > 0) {
@@ -580,7 +581,7 @@ ssize_t write_valid(struct file *filp, const char *buf, size_t count, loff_t *of
    i=0;
    while (i<(count) && buf[i]!='\n' && buf[i]!=0)
      i++;
-   path=(char *)kmalloc(i,GFP_KERNEL);
+   path=(char *)kmalloc(i + 1,GFP_KERNEL);
    if (path){
      path[i]=0;
      retval = __copy_from_user(path, buf, i);
@@ -976,8 +977,11 @@ int init_do_fork(void)
 
   ptr=(unsigned char *)START_ADD;
 
-#ifdef LENGTH
-  for (i=0;i<LENGTH;i++,ptr++){
+  /*
+   * Check that the running kernel code matches the code of the kernel
+   * against which this module was compiled.
+   */
+  for (i=0; i<LENGTH; i++, ptr++){
     if (*ptr!=opcode[i]){
       printk(
         "%s: Code mismatch when attempting to trap do_fork: %x (expected %x)\n",
@@ -985,22 +989,24 @@ int init_do_fork(void)
         return -1;
     }
   }
-#endif
 
-  memcpy(jumper, jumper_func, PAGE_SIZE);
+  /* Copy LENGTH bytes from our jumper_func function to jumper. */
+  memcpy(jumper, jumper_func, LENGTH);
+
   ptr=(unsigned char *)START_ADD;
 
   /* Copy instructions to jumper */
   newptr=(unsigned char *)(jumper);
+#ifdef HAS_SET_MEMORY_SUPPORT
+  /* Mark the memory associated with our jumper as executable. */
+  set_memory_x((long unsigned)newptr, PAGE_ALIGN(LENGTH) >> PAGE_SHIFT);
+#endif
+
 //  printk("Copying function to jumper 0x%llx\n", newptr);
   for (ptr=start;ptr<end;ptr++,newptr++){
     *newptr=*ptr;
   }
 
-#ifdef HAS_SET_MEMORY_X
-  /* Mark the memory associated with our jumper as executable. */
-  set_memory_x((long unsigned)newptr, PAGE_SIZE);
-#endif
 
   /* Modify jumper to jump back to original function at
      next instruction boundary */
