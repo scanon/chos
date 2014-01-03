@@ -111,15 +111,25 @@ loadvalid() {
 	fi
 }
 
+bindmount() {
+	_SOURCE="$1"
+	shift
+	_MOUNTPOINT="$1"
+	shift
+	mount --bind "$_SOURCE" "$_MOUNTPOINT"
+	if [ -z "$PRIVATE_MOUNTS" ] || [ "$PRIVATE_MOUNTS" != "no" ]; then
+		mount --make-private "$_MOUNTPOINT"
+	fi
+}
 
 mountlocal() {
 	if [ ! -z "$BINDMOUNT" ] ; then
 		[ -d /chos/local ] || mkdir /chos/local
-		mount --bind / /chos/local
+		bindmount / /chos/local
 		for d in $(echo $BINDMOUNT)
 		do
 			[ -d /chos/$d ] || mkdir /chos/$d
-			[ ! -d /$d ] || mount --bind $d /chos/$d
+			[ ! -d /$d ] || bindmount $d /chos/$d
 		done
 	fi
 }
@@ -128,12 +138,11 @@ unmountlocal() {
 	export LANG=C
 
 	if [ ! -z "$BINDMOUNT" ] ; then
+		umount /chos/local
 		for d in $(echo $BINDMOUNT|sed 's/ /\n/g'|sort -r)
 		do
-			umount /chos/local/$d
 			umount /chos/$d
 		done
-	umount /chos/local
 	fi
 }
 
@@ -171,7 +180,7 @@ case "$1" in
 	condrestart
 	;;
   *)
-	echo "Usage: $0 {start|stop|status|restart|reload|condrestart}"
+	echo "Usage: chos.init {start|stop|status|restart|reload|condrestart}"
 	exit 1
 esac
 
