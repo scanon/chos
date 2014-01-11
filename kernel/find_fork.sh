@@ -81,6 +81,7 @@ if  [ -e $SM ] ; then
   
   # find_task_by_pid_ns and tasklist_lock are not exported
   FIND_PID=`grep ' find_task_by_pid_ns$' $SM | awk '{print $1}'`
+  LOOKUP_ADDRESS=`grep ' lookup_address$' $SM | awk '{print $1}'`
   TASKLIST_LOCK=`grep ' tasklist_lock$' $SM | awk '{print $1}'`
   SET_FS_ROOT=`grep ' set_fs_root$' $SM | awk '{print $1}'`
   PATH_LOOKUPAT=`grep ' path_lookupat$' $SM | awk '{print $1}'`
@@ -96,6 +97,7 @@ if  [ -e $SM ] ; then
   echo "#ifndef HAS_PATH_LOOKUP" >>$INC;
   echo "int (*path_lookupat_p)(int, const char *, unsigned int, struct nameidata *)=(void *)0x$PATH_LOOKUPAT;" >>$INC;
   echo "#endif" >>$INC;
+  echo "pte_t* (*lookup_address_p)(unsigned long, unsigned int *)=(void *)0x$LOOKUP_ADDRESS;" >>$INC;
 
 
 fi

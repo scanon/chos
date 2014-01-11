@@ -6,7 +6,7 @@
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
-#define MY_MODULE_VERSION "0.13.0"
+#define MY_MODULE_VERSION "0.13.1"
 
 /*
  * chos, Linux Kernel Module.
@@ -61,6 +61,9 @@
  *  0.12.1 - Improve handling of short-lived processes in
  *           chos_do_fork()
  *  0.13.0 - Add support for el7 kernel family
+ *  0.13.1 - Remove requirement for CONFIG_DEBUG_RODATA=n by
+ *           explicitly setting memory associated with the wrapped
+ *           function to writable.
  *
  */
 
@@ -965,6 +968,44 @@ void cleanup_module(void)
 }
 
 #ifdef WRAP_DOFORK  
+
+/*
+ * Manipulate the PTE associated with the function we want to wrap.
+ * If the passed pteval is _PAGE_RW, mark the page writable.
+ * Otherwise, change the pteval to match the passed pteval_t.
+ */
+pteval_t set_pteval(pteval_t pteval) {
+  pteval_t *target_pte;
+  pteval_t old_pte;
+  unsigned int level;
+
+  /* Look up the PTE for the memory at target. */
+  target_pte = &(lookup_address_p((unsigned long)START_ADD,&level)->pte);
+  old_pte = *target_pte;
+
+  switch(pteval) {
+    case(_PAGE_RW):
+      /*
+       * Set the memory at the location of target to writeable
+       * if it is not already writable.
+       */
+      if(!(*target_pte & _PAGE_RW)) {
+        *target_pte |= _PAGE_RW;
+      }
+      break;
+    default:
+      /* Restore the old PTE value, if it was changed. */
+      if(*target_pte != pteval) {
+        *target_pte = pteval;
+      }
+      break;
+  }
+
+  return old_pte;
+
+}
+
+
 int init_do_fork(void)
 {
   unsigned char *ptr;
@@ -973,6 +1014,7 @@ int init_do_fork(void)
   unsigned char *end=(unsigned char *)END_ADD;
   long *lptr;
   long diff;
+  pteval_t old_pteval;
   int i;
 
   ptr=(unsigned char *)START_ADD;
@@ -1007,6 +1049,8 @@ int init_do_fork(void)
     *newptr=*ptr;
   }
 
+  /* Set the memory at START_ADD writable, if needed. */
+  old_pteval = set_pteval(_PAGE_RW);
 
   /* Modify jumper to jump back to original function at
      next instruction boundary */
@@ -1036,6 +1080,8 @@ int init_do_fork(void)
 //  printk(" diff %d\n",diff);
   *lptr=diff;
 
+  /* Restore the previous PTE value. */
+  set_pteval(old_pteval);
 
 //  printk ("Fix brk installed..\n");           /* All done. */
   return 0;                                   /* success */
@@ -1050,13 +1096,20 @@ void cleanup_do_fork(void)
   unsigned char *start=(unsigned char *)START_ADD;
   unsigned char *end=(unsigned char *)END_ADD;
 
+  pteval_t old_pteval;
   ptr=(unsigned char *)START_ADD;
+
+  /* Set the memory at START_ADD writable, if needed. */
+  old_pteval = set_pteval(_PAGE_RW);
 
   /* Copy instructions to jumper */
   newptr=(unsigned char *)(jumper);
   for (ptr=start;ptr<end;ptr++,newptr++){
     *ptr=*newptr;
   }
+
+  /* Restore the previous PTE value. */
+  set_pteval(old_pteval);
 }
 
 /* These are the first couple of lines from the patched mmap.c */
