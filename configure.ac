@@ -80,7 +80,7 @@ dnl Optional stuff
 #****************************************************************************/
 AC_MSG_CHECKING([kernel source])
 AC_ARG_WITH(
-    [kheaders],
+    [kernel-source],
 [  --with-kernel-source[=PATH]  directory where kernel source exists],
     [KERNEL_BASE=$withval],
     [KERNEL_BASE=/lib/modules/`uname -r`/build])
