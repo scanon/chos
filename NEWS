@@ -1,3 +1,16 @@
+CHOS 0.12.1                 2014-09-12
+======================================
+ * Add '--help' and '--version' flags to the chos utility
+
+ * The name of the pam_chos user configuration file can
+   now be customized through the user_conf_file option
+
+ * The behavior of pam_chos when the user configuration file
+   contains invalid contents can now be customized through the
+   fail_to_default option
+
+ * Numerous build system and initscript improvements
+
 CHOS 0.11.2                 2013-06-27
 ======================================
  * Modify the method of setting the CHOS mapping of new processes to

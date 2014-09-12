@@ -1,5 +1,5 @@
 %define module chos
-%define version 0.12.1rc1
+%define version 0.12.1
 %define release 1
 
 #
@@ -204,6 +204,9 @@ exit 0
 %endif %{usedkms}
 
 %changelog
+* Fri Sep 12 2014 Larry Pezzaglia <lmpezzaglia@lbl.gov>
+- Release version 0.12.1
+
 * Mon Oct 21 2013 Larry Pezzaglia <lmpezzaglia@lbl.gov>
 - Update to version 0.12.1rc1
 
