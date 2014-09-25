@@ -1,6 +1,34 @@
+2014-09-25  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	Merge branch 'el7' adding initial support for the EL7 kernel family:
+
+	* eb3f552 (HEAD, master, el7) Use --with-kernel-source instead of --with-kheaders
+
+	* d8b94fc Explicity set memory associated with the wrapped function to writable.  This should remove the requirement for CONFIG_DEBUG_RODATA=n
+
+	* 55c85a4 Explicitly use private mounts
+
+	* 4786ab9 Update version to 0.13.0rc1
+
+	* 81a2c07 Page-align jumper memory and allocate an additional byte for path storage
+
+	* 8c7bea2 Remove Wtype-limits from CFLAGS to restore support for el5's gcc
+
+	* de51980 Only use set_memory_x on kernels >= 2.6.25
+
+	* c4bcf83 Mark memory allocated to the jumper function as executable to accommodate CONFIG_DEBUG_MODULE_RONX
+
+	* cf1a259 Add support for the EL7 kernel's do_fork() function
+
+	* dccb530 Update operations on files in /proc/chos/ to match the new proc interface
+
+	* ca2c1b8 Initial modifications to build against the el7 kernel family
+
+	* a1835e9 Add set -Eeu to find_fork.sh
+
 2014-09-12  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
 
-	0.12.1 release
+	* 0.12.1 release
 
 2013-07-29  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
 
