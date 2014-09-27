@@ -1,9 +1,5 @@
 %define module chos
-<<<<<<< HEAD
-%define version 0.12.1
-=======
 %define version 0.13.0rc1
->>>>>>> Update version to 0.13.0rc1
 %define release 1
 
 #
