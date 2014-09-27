@@ -21,7 +21,7 @@
 # Note that this will build a module for the kernel running on the build
 # host.
 #
-%define buildmod 1
+%define buildmod 0
 #%define initdir /etc/rc.d/init.d
 
 Summary: chos utilities
