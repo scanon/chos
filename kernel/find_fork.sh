@@ -20,7 +20,7 @@ if [ -e "$INC" ] ; then
 fi
 touch "$INC"
 if  [ -e $SM ] ; then 
-  address=`grep do_fork$ $SM|grep -v idle|sed 's/ .*//'`
+  address=`grep copy_process$ $SM|grep -v idle|sed 's/ .*//'`
   if [ -e $KB ] ; then
 
     # ffffffff8106a760:       55                      push   %rbp

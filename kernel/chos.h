@@ -137,7 +137,7 @@ struct chos {
 	struct chos_proc *procs;
 	struct nameidata named;
 	struct nameidata nochroot;
-	int fork_wrapped;
+	int copy_process_wrapped;
 };
 
 struct valid_path {

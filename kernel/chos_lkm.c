@@ -64,6 +64,9 @@
  *  0.13.1 - Remove requirement for CONFIG_DEBUG_RODATA=n by
  *           explicitly setting memory associated with the wrapped
  *           function to writable.
+ *  0.14.0 - Wrap copy_process instead of do_fork to avoid a potential
+ *           race condition where a process terminates before its chos
+ *           mapping is set.
  *
  */
 
@@ -139,19 +142,19 @@ int save_state=0;
 
 
 #if defined(START_ADD) && defined(END_ADD)
-#define WRAP_DOFORK
+#define WRAP_COPY_PROCESS
 #define LENGTH (END_ADD-START_ADD)
-int init_do_fork(void);
-void cleanup_do_fork(void);
+int init_copy_process(void);
+void cleanup_copy_process(void);
 #endif
 #if defined(START_ADD) && defined(LENGTH)
-#define WRAP_DOFORK
+#define WRAP_COPY_PROCESS
 #define END_ADD (START_ADD+LENGTH)
 #endif
 
-#ifdef WRAP_DOFORK
-int init_do_fork(void);
-void cleanup_do_fork(void);
+#ifdef WRAP_COPY_PROCESS
+int init_copy_process(void);
+void cleanup_copy_process(void);
 unsigned long jumper[PAGE_ALIGN(LENGTH)] __attribute__((aligned(PAGE_SIZE)));
 #endif
 
@@ -165,7 +168,7 @@ void my_sys_exit_group(int error_code);
 
 /* declarations */
 int is_valid_path(const char *path);
-DO_FORK_RET chos_do_fork(unsigned long clone_flags,
+DO_FORK_RET chos_copy_process(unsigned long clone_flags,
             unsigned long stack_start,
             struct pt_regs *regs,
             unsigned long stack_size,
@@ -502,12 +505,12 @@ ssize_t write_savestate(struct file *filp, const char *buf, size_t count, loff_t
  */
 static int print_version(struct seq_file *m, void *v)
 {
-  char *yes_fork="Fork trapped";
-  char *no_fork="Fork not trapped";
+  char *yes_fork="copy_process trapped";
+  char *no_fork="copy_process not trapped";
   char *text_fork;
 
   MOD_INC;
-  if (ch->fork_wrapped){
+  if (ch->copy_process_wrapped){
     text_fork=yes_fork;
   }
   else{
@@ -764,11 +767,11 @@ int init_chos(void)
   }
   ch->magic=0x1234;
   ch->version=1;
-  ch->fork_wrapped=0;
+  ch->copy_process_wrapped=0;
 
-#ifdef WRAP_DOFORK  
-  if (init_do_fork()==0){
-    ch->fork_wrapped=1;
+#ifdef WRAP_COPY_PROCESS  
+  if (init_copy_process()==0){
+    ch->copy_process_wrapped=1;
   }
 #endif
 #ifdef SCT
@@ -931,9 +934,9 @@ fail_dir:
 void cleanup_module(void)
 {
 
-#ifdef WRAP_DOFORK
-  if (ch->fork_wrapped){
-    cleanup_do_fork();
+#ifdef WRAP_COPY_PROCESS
+  if (ch->copy_process_wrapped){
+    cleanup_copy_process();
   }
 #endif
 #ifdef SCT
@@ -967,7 +970,7 @@ void cleanup_module(void)
   printk("%s: Module cleanup. Chos entry removed.\n",MODULE_NAME);
 }
 
-#ifdef WRAP_DOFORK  
+#ifdef WRAP_COPY_PROCESS  
 
 /*
  * Manipulate the PTE associated with the function we want to wrap.
@@ -1006,7 +1009,7 @@ pteval_t set_pteval(pteval_t pteval) {
 }
 
 
-int init_do_fork(void)
+int init_copy_process(void)
 {
   unsigned char *ptr;
   unsigned char *newptr;
@@ -1026,7 +1029,7 @@ int init_do_fork(void)
   for (i=0; i<LENGTH; i++, ptr++){
     if (*ptr!=opcode[i]){
       printk(
-        "%s: Code mismatch when attempting to trap do_fork: %x (expected %x)\n",
+        "%s: Code mismatch when attempting to trap copy_process: %x (expected %x)\n",
         MODULE_NAME, *ptr, opcode[i]);
         return -1;
     }
@@ -1076,7 +1079,7 @@ int init_do_fork(void)
   ptr++;
   lptr=(long *)(ptr);
   ptr+=4;  /* address of the next instruction*/
-  diff=((void *)(chos_do_fork)-(void *)ptr);
+  diff=((void *)(chos_copy_process)-(void *)ptr);
 //  printk(" diff %d\n",diff);
   *lptr=diff;
 
@@ -1089,7 +1092,7 @@ int init_do_fork(void)
 }
 
 
-void cleanup_do_fork(void)
+void cleanup_copy_process(void)
 {
   unsigned char *ptr;
   unsigned char *newptr;
@@ -1115,7 +1118,7 @@ void cleanup_do_fork(void)
 /* These are the first couple of lines from the patched mmap.c */
 /* Do the new checks and then call the jumper function         */
 
-DO_FORK_RET chos_do_fork(unsigned long clone_flags,
+DO_FORK_RET chos_copy_process(unsigned long clone_flags,
             unsigned long stack_start,
             struct pt_regs *regs,
             unsigned long stack_size,
@@ -1130,7 +1133,7 @@ DO_FORK_RET chos_do_fork(unsigned long clone_flags,
 
   /*
    * Cast jumper to the appropriate function pointer, and then call
-   * jumper with the arguments passed to chos_do_fork.
+   * jumper with the arguments passed to chos_copy_process.
    */
   pid=(
           (DO_FORK_RET (*)(unsigned long,
