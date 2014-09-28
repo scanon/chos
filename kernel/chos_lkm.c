@@ -168,19 +168,22 @@ void my_sys_exit_group(int error_code);
 
 /* declarations */
 int is_valid_path(const char *path);
-DO_FORK_RET chos_copy_process(unsigned long clone_flags,
-            unsigned long stack_start,
-            struct pt_regs *regs,
-            unsigned long stack_size,
-            TIDPTR_T *parent_tidptr,
-            TIDPTR_T *child_tidptr);
-DO_FORK_RET jumper_func(unsigned long clone_flags,
-            unsigned long stack_start,
-            struct pt_regs *regs,
-            unsigned long stack_size,
-            TIDPTR_T *parent_tidptr,
-            TIDPTR_T *child_tidptr);
 
+static struct task_struct *chos_copy_process(
+              unsigned long clone_flags,
+              unsigned long stack_start,
+              unsigned long stack_size,
+              TIDPTR_T *child_tidptr,
+              struct pid *pid,
+              int trace);
+
+static struct task_struct *jumper_func(
+              unsigned long clone_flags,
+              unsigned long stack_start,
+              unsigned long stack_size,
+              TIDPTR_T *child_tidptr,
+              struct pid *pid,
+              int trace);
 
 /*
  * This allocates and fills the chos_link structure.  This is typically
@@ -1118,16 +1121,16 @@ void cleanup_copy_process(void)
 /* These are the first couple of lines from the patched mmap.c */
 /* Do the new checks and then call the jumper function         */
 
-DO_FORK_RET chos_copy_process(unsigned long clone_flags,
-            unsigned long stack_start,
-            struct pt_regs *regs,
-            unsigned long stack_size,
-            TIDPTR_T *parent_tidptr,
-            TIDPTR_T *child_tidptr)
+static struct task_struct *chos_copy_process(
+              unsigned long clone_flags,
+              unsigned long stack_start,
+              unsigned long stack_size,
+              TIDPTR_T *child_tidptr,
+              struct pid *pid,
+              int trace)
 {
   struct chos_link *parent_link;
   struct task_struct *t;
-  PID_T pid;
 
   parent_link = lookup_link(current);
 
@@ -1135,41 +1138,34 @@ DO_FORK_RET chos_copy_process(unsigned long clone_flags,
    * Cast jumper to the appropriate function pointer, and then call
    * jumper with the arguments passed to chos_copy_process.
    */
-  pid=(
-          (DO_FORK_RET (*)(unsigned long,
+  t=(
+          (struct task_struct* (*)(unsigned long,
                            unsigned long,
-                           struct pt_regs *,
-                           unsigned long, TIDPTR_T *,
-                           TIDPTR_T *))
-          jumper)(clone_flags, stack_start, regs,
-              stack_size, parent_tidptr, child_tidptr); 
+                           unsigned long,
+                           TIDPTR_T *,
+                           struct pid *,
+                           int))
+          jumper)(clone_flags, stack_start, stack_size,
+              child_tidptr, pid, trace); 
 
-  if ( pid > 0){
-    write_lock_irq(tasklist_lock_p);
-#ifdef PID_NS
-    t=s_find_task_by_pid_ns(pid,current->nsproxy->pid_ns);
-#else
-    t=find_task_by_pid(pid);
-#endif
-    write_unlock_irq(tasklist_lock_p);
-    if(t != NULL ) {
-        set_link(parent_link,t);
-    }
+  if ((t != NULL) && (t->pid > 0)){
+    set_link(parent_link,t);
   }
   else{
     lookup_link(current);
   }
   /* Call the jumper       */
-  return pid;
+  return t;
 }
 
 
-DO_FORK_RET jumper_func(unsigned long clone_flags,
-            unsigned long stack_start,
-            struct pt_regs *regs,
-            unsigned long stack_size,
-            TIDPTR_T *parent_tidptr,
-            TIDPTR_T *child_tidptr)
+static struct task_struct *jumper_func(
+              unsigned long clone_flags,
+              unsigned long stack_start,
+              unsigned long stack_size,
+              TIDPTR_T *child_tidptr,
+              struct pid *pid,
+              int trace)
 {
    /* These are place holder instructions to give plenty of room.
     * They should never be called.  If the do get called, something

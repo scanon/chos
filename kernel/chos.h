@@ -75,7 +75,6 @@
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,18)
 #define TIDPTR_T int __user
 #define PID_T int
-#define DO_FORK_RET long
 #define TASK_PID_NR
 #define PID_NS
 #define STRUCT_PATH
@@ -86,7 +85,6 @@
 #define HAS_LOOKUP_NOALT
 #define TIDPTR_T int
 #define PID_T long
-#define DO_FORK_RET int
 #define KERNEL_CAP_T int
 #endif
 
