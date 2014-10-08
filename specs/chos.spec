@@ -204,6 +204,9 @@ exit 0
 %endif %{usedkms}
 
 %changelog
+* Wed Oct 08 2014 Larry Pezzaglia <lmpezzaglia@lbl.gov>
+- Update to version 0.13.1rc1
+
 * Fri Sep 25 2014 Larry Pezzaglia <lmpezzaglia@lbl.gov>
 - Update to version 0.13.0rc1
 
