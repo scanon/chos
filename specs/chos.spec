@@ -120,7 +120,7 @@ fi
 %config /etc/chos
 %config /etc/chos.conf
 %config /etc/sysconfig/chos
-/%{_lib}/security/pam_chos*.so
+/%{_lib}/security/pam_chos.*
 #/%{_lib}/security/pam_chos.la
 %{_mandir}/man1/chos.1*
 %{_mandir}/man8/pam_chos.8*
