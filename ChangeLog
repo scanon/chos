@@ -1,3 +1,15 @@
+2014-10-08  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* specs/chos.spec: Include all pam_chos files in /lib64/security/
+
+2014-10-06  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* kernel/find_fork.sh: Update EL7 opcode to match 3.10.0-123.el7.x86_64 kernels
+
+2014-09-27  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* specs/chos.spec: Do not build kernel module by default in specfile
+
 2014-09-25  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
 
 	Merge branch 'el7' adding initial support for the EL7 kernel family:

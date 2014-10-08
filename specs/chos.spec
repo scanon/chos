@@ -1,5 +1,5 @@
 %define module chos
-%define version 0.13.0rc1
+%define version 0.13.1rc1
 %define release 1
 
 #
@@ -120,7 +120,7 @@ fi
 %config /etc/chos
 %config /etc/chos.conf
 %config /etc/sysconfig/chos
-/%{_lib}/security/pam_chos*.so
+/%{_lib}/security/pam_chos.*
 #/%{_lib}/security/pam_chos.la
 %{_mandir}/man1/chos.1*
 %{_mandir}/man8/pam_chos.8*
@@ -204,6 +204,9 @@ exit 0
 %endif %{usedkms}
 
 %changelog
+* Wed Oct 08 2014 Larry Pezzaglia <lmpezzaglia@lbl.gov>
+- Update to version 0.13.1rc1
+
 * Fri Sep 25 2014 Larry Pezzaglia <lmpezzaglia@lbl.gov>
 - Update to version 0.13.0rc1
 

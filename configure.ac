@@ -6,7 +6,7 @@ m4_define(PROJECT_EMAIL, [chos@nersc.gov])
 m4_define(PROJECT_TAR,   [chos])
 m4_define(PROJECT_MAJOR, 0)
 m4_define(PROJECT_MINOR, 13)
-m4_define(PROJECT_MICRO, 0rc1)
+m4_define(PROJECT_MICRO, 1rc1)
 
 AC_INIT(PROJECT_NAME, PROJECT_MAJOR.PROJECT_MINOR.PROJECT_MICRO,
         PROJECT_EMAIL, PROJECT_TAR)
@@ -75,35 +75,6 @@ AC_SUBST(CC_STATIC)
 dnl Check for libraries
 
 dnl Optional stuff
-#****************************************************************************/
-# Kernel Source Check
-#****************************************************************************/
-AC_MSG_CHECKING([kernel source])
-AC_ARG_WITH(
-    [kernel-source],
-[  --with-kernel-source[=PATH]  directory where kernel source exists],
-    [KERNEL_BASE=$withval],
-    [KERNEL_BASE=/lib/modules/`uname -r`/build])
-KERNEL_HDR="$KERNEL_BASE/include"
-if test -f "$KERNEL_HDR/linux/utsrelease.h"
-then
-    KERNEL_VERSION_H="$KERNEL_HDR/linux/utsrelease.h"
-elif test -f "$KERNEL_HDR/generated/utsrelease.h"
-then
-    KERNEL_VERSION_H="$KERNEL_HDR/generated/utsrelease.h"
-else
-    AC_MSG_RESULT([not found])
-    AC_MSG_ERROR([cannot find the kernel headers in $KERNEL_HDR. Use --with-kernel-source])
-fi
-
-AC_MSG_RESULT([found in $KERNEL_HDR ($KERNEL_VERSION_H)])
-
-KERNEL_VERSION=`$CC -E -dM -I$KERNEL_HDR $KERNEL_VERSION_H|$AWK '/UTS_RELEASE/ { print $3 }' \
-       | sed 's/"//g'`
-AC_MSG_RESULT(kernel version: $KERNEL_VERSION)
-AC_SUBST(KERNEL_BASE)
-AC_SUBST(KERNEL_HDR)
-AC_SUBST(KERNEL_VERSION)
 
 
 #****************************************************************************/
@@ -124,7 +95,37 @@ AC_SUBST(MODULES_DIR)
 AC_ARG_ENABLE(kernel,
      [  --enable-kernel    Build kernel module],
      [case "${enableval}" in
-       yes) BUILD_KERNEL=1 ;;
+       yes) BUILD_KERNEL=1
+            #****************************************************************************/
+            # Kernel Source Check
+            #****************************************************************************/
+            AC_MSG_CHECKING([kernel source])
+            AC_ARG_WITH(
+                [kernel-source],
+            [  --with-kernel-source[=PATH]  directory where kernel source exists],
+                [KERNEL_BASE=$withval],
+                [KERNEL_BASE=/lib/modules/`uname -r`/build])
+            KERNEL_HDR="$KERNEL_BASE/include"
+            if test -f "$KERNEL_HDR/linux/utsrelease.h"
+            then
+                KERNEL_VERSION_H="$KERNEL_HDR/linux/utsrelease.h"
+            elif test -f "$KERNEL_HDR/generated/utsrelease.h"
+            then
+                KERNEL_VERSION_H="$KERNEL_HDR/generated/utsrelease.h"
+            else
+                AC_MSG_RESULT([not found])
+                AC_MSG_ERROR([cannot find the kernel headers in $KERNEL_HDR. Use --with-kernel-source])
+            fi
+
+            AC_MSG_RESULT([found in $KERNEL_HDR ($KERNEL_VERSION_H)])
+
+            KERNEL_VERSION=`$CC -E -dM -I$KERNEL_HDR $KERNEL_VERSION_H|$AWK '/UTS_RELEASE/ { print $3 }' \
+                   | sed 's/"//g'`
+            AC_MSG_RESULT(kernel version: $KERNEL_VERSION)
+            AC_SUBST(KERNEL_BASE)
+            AC_SUBST(KERNEL_HDR)
+            AC_SUBST(KERNEL_VERSION)
+            ;;
        no)  BUILD_KERNEL=0 ;;
        *) AC_MSG_ERROR(bad value ${enableval} for --enable-kernel) ;;
      esac],[BUILD_KERNEL=0])
