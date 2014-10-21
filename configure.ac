@@ -159,7 +159,7 @@ AC_ARG_ENABLE(securedir,
 AC_SUBST(SECUREDIR)
 
 
-AC_OUTPUT(Makefile utils/Makefile Make.Rules conf/Makefile pam_chos/Makefile)
+AC_OUTPUT(Makefile utils/Makefile Make.Rules conf/Makefile pam_chos/Makefile kernel/dkms.conf)
 
 AC_MSG_RESULT([
 
