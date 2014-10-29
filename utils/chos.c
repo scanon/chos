@@ -93,7 +93,9 @@ int main(int argc, char *argv[]) {
         newarg[1]="-l";
       }
       else{
-        newarg[1]="-";
+	newarg[1]="-";
+	/* Check if we want bash invoked as a login shell */
+	if (set_beh()) newarg[1]="-l";
       }
       newarg[2]=NULL;
       execve(pw->pw_shell,newarg,newenv);
@@ -185,12 +187,12 @@ char ** set_env() {
       continue; 
 /* Remove new line */
     while(*value!=0 && *value!='\n')
-  value++;
+      value++;
     *value=0;
     if (start){
       count++;
       if (buffer[0]=='%')
-  break;
+	break;
     }
     else if (strcmp(buffer,ENVHEAD)==0){
       start=1;
@@ -249,6 +251,54 @@ char ** set_env() {
   }
   fclose(stream);
   return env; 
+}
+
+/*
+ * This function looks at the /etc/chos.conf file and sets chos behavior
+ * according to variables listed in the %BEH section.
+ * Right now there's only the switch to start bash as a login shell, so that's
+ * all that's passed. It could be done better, but since the file reading is 
+ * scheduled for reworking, this is good enough for now.
+ */
+int set_beh() {
+  FILE *stream;
+  char *value;
+  char buffer[MAXLINE];
+  int start=0;
+  int dobashlog=0;
+
+  stream=fopen(CHOSENV,"r");
+  if (!stream){
+
+    fprintf(stderr,"Unable to open conf file (%s)\n",CHOSENV);
+    perror("chos.conf");
+    return NULL; 
+  }
+
+  start=0;
+  while(1){
+    value=fgets(buffer,MAXLINE,stream);
+    if (value==NULL)
+      break;
+    if (buffer[0]=='#' || buffer[0]=='\n')
+      continue; 
+/* Remove new line */
+    while(*value!=0 && *value!='\n')
+      value++;
+    *value=0;
+    if (start){
+      if (buffer[0]=='%')
+	break;
+      if (strcmp(buffer,"BASHLOGIN")==0){
+	dobashlog=1;
+      }
+    }
+    else if (strcmp(buffer,BEHHEAD)==0){
+      start=1;
+    }
+  }
+  fclose(stream);
+  return dobashlog; 
 }
 
 char * check_chos(char *name) {

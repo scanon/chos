@@ -71,6 +71,8 @@
 
 #define ENVHEAD "%ENV"
 
+#define BEHHEAD "%BEH"
+
 #define DEFAULT "default"
 
 #define FAIL_TO_DEFAULT 0
