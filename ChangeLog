@@ -1,3 +1,7 @@
+2015-01-16  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
+
+	* 0.13.1 release
+
 2014-10-08  Larry Pezzaglia  <lmpezzaglia@lbl.gov>
 
 	* specs/chos.spec: Include all pam_chos files in /lib64/security/

@@ -1,3 +1,12 @@
+CHOS 0.13.1                 2015-01-16
+======================================
+ * Remove requirement for CONFIG_DEBUG_RODATA=n
+
+ * Add experimental support for the EL7 kernel family
+
+ * Add configurable ability for the "chos" userspace utility to invoke
+   bash with or without "-l"
+
 CHOS 0.12.1                 2014-09-12
 ======================================
  * Add '--help' and '--version' flags to the chos utility
