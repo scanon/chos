@@ -6,7 +6,7 @@
 
 /* some constants used in our module */
 #define MODULE_NAME "chos"
-#define MY_MODULE_VERSION "0.13.1"
+#define MY_MODULE_VERSION "0.13.2"
 
 /*
  * chos, Linux Kernel Module.
@@ -64,6 +64,7 @@
  *  0.13.1 - Remove requirement for CONFIG_DEBUG_RODATA=n by
  *           explicitly setting memory associated with the wrapped
  *           function to writable.
+ *  0.13.2 - Bump version number due to new userspace release
  *
  */
 

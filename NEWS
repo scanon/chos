@@ -1,3 +1,8 @@
+CHOS 0.13.2                 2015-01-23
+======================================
+ * Fix autotools build issue resulting from switching README to
+   markdown
+
 CHOS 0.13.1                 2015-01-16
 ======================================
  * Remove requirement for CONFIG_DEBUG_RODATA=n
