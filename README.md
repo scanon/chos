@@ -1,5 +1,7 @@
 # CHOS
 
+[![Join the chat at https://gitter.im/scanon/chos](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/scanon/chos?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ## Introduction
 
 CHOS is a kernel module and utilities that facilitates supporting
